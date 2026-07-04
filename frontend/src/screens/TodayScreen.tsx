@@ -19,6 +19,8 @@ export function TodayScreen() {
   const [allCheckins, setAllCheckins] = useState<Checkin[]>([])
   const [allDayLogs, setAllDayLogs] = useState<DayLog[]>([])
   const [disrupted, setDisrupted] = useState(false)
+  const [dailyNote, setDailyNote] = useState('')
+  const [noteSaved, setNoteSaved] = useState(false)
 
   const loadData = useCallback(async () => {
     const days = weekDays()
@@ -33,10 +35,19 @@ export function TodayScreen() {
     setTodayCheckins(checkins.filter((c) => c.date === today))
     setAllDayLogs(dayLogs)
     const todayLog = dayLogs.find((d) => d.date === today)
-    if (todayLog) setDisrupted(todayLog.disrupted)
+    if (todayLog) {
+      setDisrupted(todayLog.disrupted)
+      setDailyNote(todayLog.disruptionNote ?? '')
+    }
   }, [today])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function saveNote(note: string) {
+    await api.put(`/api/daylogs/${today}`, { note })
+    setNoteSaved(true)
+    setTimeout(() => setNoteSaved(false), 1500)
+  }
 
   async function toggleDisrupted() {
     const next = !disrupted
@@ -110,6 +121,23 @@ export function TodayScreen() {
           <div className="h-px flex-1 bg-ink-10" />
         </div>
       )}
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest">Today's note</h2>
+          {noteSaved && <span className="font-sans text-xs text-sage">Saved</span>}
+        </div>
+        <textarea
+          value={dailyNote}
+          onChange={(e) => setDailyNote(e.target.value)}
+          onBlur={(e) => { if (e.target.value.trim()) saveNote(e.target.value.trim()) }}
+          placeholder="How did today go? Anything on your mind — skipped a habit, late night, guests over..."
+          rows={3}
+          maxLength={1000}
+          className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor resize-none placeholder:text-ink/25"
+        />
+        <p className="font-sans text-xs text-ink/25 mt-1">Saved on blur. Shared with AI for weekly planning.</p>
+      </div>
     </div>
   )
 }
