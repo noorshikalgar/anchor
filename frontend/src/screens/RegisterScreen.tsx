@@ -1,0 +1,100 @@
+import { useState } from 'react'
+import { api } from '@/lib/api'
+import { useAuthStore } from '@/lib/authStore'
+
+interface Props {
+  onLogin: () => void
+}
+
+export function RegisterScreen({ onLogin }: Props) {
+  const { setUser } = useAuthStore()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const user = await api.post<{ id: string; email: string; name: string }>('/auth/register', { name, email, password })
+      setUser(user)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-parchment flex flex-col items-center justify-center px-6 max-w-md mx-auto">
+      <div className="w-full">
+        <div className="mb-8">
+          <div className="w-10 h-10 border-2 border-harbor mb-6 flex items-center justify-center">
+            <div className="w-4 h-4 bg-harbor" />
+          </div>
+          <h1 className="font-display text-3xl font-semibold text-ink mb-1">Create account</h1>
+          <p className="font-sans text-sm text-ink/50">Your data stays on your server.</p>
+        </div>
+
+        <form onSubmit={handleRegister} className="flex flex-col gap-3">
+          <div className="border border-ink-10 bg-white p-4 flex flex-col gap-3">
+            <div>
+              <label className="font-sans text-xs text-ink/50 block mb-1">Your name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30"
+              />
+            </div>
+            <div>
+              <label className="font-sans text-xs text-ink/50 block mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30"
+              />
+            </div>
+            <div>
+              <label className="font-sans text-xs text-ink/50 block mb-1">Password (min 8 chars)</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30"
+              />
+            </div>
+          </div>
+
+          {error && <p className="font-sans text-xs text-brick px-1">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-harbor text-parchment font-sans font-medium text-sm disabled:opacity-50"
+          >
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
+
+        <p className="font-sans text-xs text-ink/40 text-center mt-4">
+          Already have an account?{' '}
+          <button onClick={onLogin} className="text-harbor underline">
+            Sign in
+          </button>
+        </p>
+      </div>
+    </div>
+  )
+}

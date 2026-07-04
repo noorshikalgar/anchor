@@ -17,7 +17,7 @@ export interface Checkin {
   reason?: DisruptionReason
   note?: string
   usedFallback: boolean
-  loggedAt: number
+  loggedAt: string
 }
 
 export interface DayLog {

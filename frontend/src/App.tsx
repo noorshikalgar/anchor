@@ -4,27 +4,35 @@ import { TodayScreen } from '@/screens/TodayScreen'
 import { FocusScreen } from '@/screens/FocusScreen'
 import { WeekScreen } from '@/screens/WeekScreen'
 import { YouScreen } from '@/screens/YouScreen'
-import { OnboardingScreen } from '@/screens/OnboardingScreen'
-import { useAppStore } from '@/lib/store'
+import { LoginScreen } from '@/screens/LoginScreen'
+import { RegisterScreen } from '@/screens/RegisterScreen'
+import { useAuthStore } from '@/lib/authStore'
+import { api } from '@/lib/api'
 
 export default function App() {
-  const { userName } = useAppStore()
-  const [onboarded, setOnboarded] = useState<boolean | null>(null)
+  const { user, setUser, loading, setLoading } = useAuthStore()
   const [screen, setScreen] = useState<Screen>('today')
+  const [authView, setAuthView] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
-    setOnboarded(userName !== 'there' || localStorage.getItem('anchor-onboarded') === 'true')
-  }, [userName])
+    api.get<{ id: string; email: string; name: string }>('/auth/me')
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false))
+  }, [setUser, setLoading])
 
-  function handleOnboardingDone() {
-    localStorage.setItem('anchor-onboarded', 'true')
-    setOnboarded(true)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-parchment flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-harbor border-t-transparent animate-spin" />
+      </div>
+    )
   }
 
-  if (onboarded === null) return null
-
-  if (!onboarded) {
-    return <OnboardingScreen onDone={handleOnboardingDone} />
+  if (!user) {
+    return authView === 'login'
+      ? <LoginScreen onRegister={() => setAuthView('register')} />
+      : <RegisterScreen onLogin={() => setAuthView('login')} />
   }
 
   return (

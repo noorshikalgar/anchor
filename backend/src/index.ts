@@ -1,0 +1,31 @@
+import 'dotenv/config'
+import express from 'express'
+import cookieParser from 'cookie-parser'
+import cors from 'cors'
+
+import authRouter from './routes/auth'
+import habitsRouter from './routes/habits'
+import checkinsRouter from './routes/checkins'
+import dayLogsRouter from './routes/dayLogs'
+import settingsRouter from './routes/settings'
+
+const app = express()
+const PORT = process.env.PORT ?? 3001
+
+app.use(express.json())
+app.use(cookieParser())
+
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  credentials: true,
+}))
+
+app.use('/auth', authRouter)
+app.use('/api/habits', habitsRouter)
+app.use('/api/checkins', checkinsRouter)
+app.use('/api/daylogs', dayLogsRouter)
+app.use('/api/settings', settingsRouter)
+
+app.get('/health', (_req, res) => res.json({ ok: true }))
+
+app.listen(PORT, () => console.log(`Anchor backend running on :${PORT}`))

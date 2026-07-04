@@ -1,19 +1,39 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: anchor
+      POSTGRES_USER: anchor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SEC", "pg_isready", "-U", "anchor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://anchor:${POSTGRES_PASSWORD}@postgres:5432/anchor
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build: ./frontend
     ports:
       - "3000:80"
+    depends_on:
+      - backend
     restart: unless-stopped
-    # backend service added in Phase A (v0.2.0-alpha)
 
-  # backend:
-  #   build: ./backend
-  #   ports:
-  #     - "3001:3001"
-  #   volumes:
-  #     - ./data:/app/data
-  #   environment:
-  #     - NODE_ENV=production
-  #     - DATABASE_PATH=/app/data/anchor.db
-  #   restart: unless-stopped
-  #   depends_on: []
+volumes:
+  postgres_data:
