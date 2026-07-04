@@ -94,7 +94,7 @@ function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: M
         <p className="font-sans text-[10px] font-medium text-harbor/70 uppercase tracking-widest">
           {plan.source === 'gemini' ? 'AI plan — Gemini' : 'Plan'}
         </p>
-        <button onClick={onRefresh} className="text-ink/30 hover:text-harbor transition-colors">
+        <button onClick={() => onRefresh()} className="text-ink/30 hover:text-harbor transition-colors">
           <RefreshCw size={13} />
         </button>
       </div>

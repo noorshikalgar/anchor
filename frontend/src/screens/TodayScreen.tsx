@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronDown } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
 import { TODAY, getGreeting, weekDays } from '@/lib/dates'
@@ -21,6 +21,7 @@ export function TodayScreen() {
   const [disrupted, setDisrupted] = useState(false)
   const [dailyNote, setDailyNote] = useState('')
   const [noteSaved, setNoteSaved] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     const days = weekDays()
@@ -37,7 +38,9 @@ export function TodayScreen() {
     const todayLog = dayLogs.find((d) => d.date === today)
     if (todayLog) {
       setDisrupted(todayLog.disrupted)
-      setDailyNote(todayLog.disruptionNote ?? '')
+      const saved = todayLog.disruptionNote ?? ''
+      setDailyNote(saved)
+      if (saved) setNoteOpen(true)
     }
   }, [today])
 
@@ -123,20 +126,38 @@ export function TodayScreen() {
       )}
 
       <div className="mt-5">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest">Today's note</h2>
-          {noteSaved && <span className="font-sans text-xs text-sage">Saved</span>}
-        </div>
-        <textarea
-          value={dailyNote}
-          onChange={(e) => setDailyNote(e.target.value)}
-          onBlur={(e) => { if (e.target.value.trim()) saveNote(e.target.value.trim()) }}
-          placeholder="How did today go? Anything on your mind — skipped a habit, late night, guests over..."
-          rows={3}
-          maxLength={1000}
-          className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor resize-none placeholder:text-ink/25"
-        />
-        <p className="font-sans text-xs text-ink/25 mt-1">Saved on blur. Shared with AI for weekly planning.</p>
+        <button
+          onClick={() => setNoteOpen((o) => !o)}
+          className="flex items-center justify-between w-full mb-2 group"
+        >
+          <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest group-hover:text-ink/70 transition-colors">
+            Today's note
+            {dailyNote && !noteOpen && (
+              <span className="ml-2 font-sans normal-case text-ink/30 font-normal tracking-normal">
+                — {dailyNote.slice(0, 40)}{dailyNote.length > 40 ? '…' : ''}
+              </span>
+            )}
+          </h2>
+          <div className="flex items-center gap-2">
+            {noteSaved && <span className="font-sans text-xs text-sage">Saved</span>}
+            <ChevronDown size={14} className={cn('text-ink/30 transition-transform', noteOpen && 'rotate-180')} />
+          </div>
+        </button>
+        {noteOpen && (
+          <>
+            <textarea
+              value={dailyNote}
+              onChange={(e) => setDailyNote(e.target.value)}
+              onBlur={(e) => { if (e.target.value.trim()) saveNote(e.target.value.trim()) }}
+              placeholder="How did today go? Skipped a habit, late night, guests over..."
+              rows={3}
+              maxLength={1000}
+              autoFocus
+              className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor resize-none placeholder:text-ink/25"
+            />
+            <p className="font-sans text-xs text-ink/25 mt-1">Saved on blur. AI reads this for weekly planning.</p>
+          </>
+        )}
       </div>
     </div>
   )

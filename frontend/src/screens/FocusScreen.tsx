@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Minus, Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, Lock, type LucideIcon } from 'lucide-react'
+import { Plus, Minus, ChevronUp, ChevronDown, Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, Lock, type LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { Habit } from '@/types/habit'
@@ -67,6 +67,15 @@ export function FocusScreen() {
   const backlog = habits.filter((h) => h.inFocus === 0)
   const { slotsUnlocked, streaks, nextUnlock } = slotData
   const atCap = focusHabits.length >= slotsUnlocked
+
+  async function reorder(index: number, dir: 'up' | 'down') {
+    const next = [...focusHabits]
+    const swap = dir === 'up' ? index - 1 : index + 1
+    if (swap < 0 || swap >= next.length) return
+    ;[next[index], next[swap]] = [next[swap], next[index]]
+    await Promise.all(next.map((h, i) => api.patch(`/api/habits/${h.id}/focus`, { inFocus: 1, focusOrder: i })))
+    loadData()
+  }
 
   async function toggleFocus(habit: Habit) {
     if (habit.inFocus === 1) {
@@ -152,13 +161,29 @@ export function FocusScreen() {
         <section className="mb-5">
           <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-2">Current focus</h2>
           <div className="flex flex-col gap-2">
-            {focusHabits.map((h) => {
+            {focusHabits.map((h, i) => {
               const streak = streaks.find((s) => s.habitId === h.id)
               return (
                 <div key={h.id}>
-                  <HabitItem habit={h} inFocus={true} onToggle={() => toggleFocus(h)} disabled={false} />
+                  <div className="flex gap-1">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => reorder(i, 'up')}
+                        disabled={i === 0}
+                        className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/30 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      ><ChevronUp size={12} /></button>
+                      <button
+                        onClick={() => reorder(i, 'down')}
+                        disabled={i === focusHabits.length - 1}
+                        className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/30 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      ><ChevronDown size={12} /></button>
+                    </div>
+                    <div className="flex-1">
+                      <HabitItem habit={h} inFocus={true} onToggle={() => toggleFocus(h)} disabled={false} />
+                    </div>
+                  </div>
                   {streak && streak.streak > 0 && (
-                    <div className={cn('px-4 py-1.5 border-x border-b border-ink-10 bg-parchment/40 flex items-center gap-2')}>
+                    <div className={cn('px-4 py-1.5 border-x border-b border-ink-10 bg-parchment/40 flex items-center gap-2 ml-7')}>
                       <div className={cn('w-2 h-2', streak.streak >= streak.target ? 'bg-sage' : 'bg-harbor')} />
                       <span className="font-mono text-xs text-ink/50">
                         {streak.streak} day streak
