@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ink: #1C2321;
+    --harbor: #2E5359;
+    --parchment: #EAE4D6;
+    --ochre: #B8843B;
+    --sage: #6E8F73;
+    --brick: #A15046;
+    --ink-10: rgba(28, 35, 33, 0.10);
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #EAE4D6;
+    color: #1C2321;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  input, button, textarea, select {
+    border-radius: 0 !important;
+    font-family: inherit;
+  }
+
+  * {
+    border-radius: 0 !important;
+  }
+
+  input[type="text"], input[type="email"], textarea {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Fraunces', Georgia, serif;
+  }
+  .font-mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+}

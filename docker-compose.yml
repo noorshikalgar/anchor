@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    # backend service added in Phase A (v0.2.0-alpha)
+
+  # backend:
+  #   build: ./backend
+  #   ports:
+  #     - "3001:3001"
+  #   volumes:
+  #     - ./data:/app/data
+  #   environment:
+  #     - NODE_ENV=production
+  #     - DATABASE_PATH=/app/data/anchor.db
+  #   restart: unless-stopped
+  #   depends_on: []
