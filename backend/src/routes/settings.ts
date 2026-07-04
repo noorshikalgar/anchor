@@ -87,7 +87,13 @@ router.get('/models', async (req, res) => {
 
     const data = await r.json() as { models: { name: string; displayName: string; supportedGenerationMethods: string[] }[] }
     const models = (data.models ?? [])
-      .filter((m) => m.supportedGenerationMethods.includes('generateContent'))
+      .filter((m) =>
+        m.supportedGenerationMethods.includes('generateContent') &&
+        m.name.includes('gemini') &&
+        !m.name.includes('embedding') &&
+        !m.name.includes('aqa') &&
+        (m.displayName.toLowerCase().includes('flash') || m.displayName.toLowerCase().includes('pro'))
+      )
       .map((m) => ({
         id: m.name.replace('models/', ''),
         displayName: m.displayName,

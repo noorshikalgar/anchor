@@ -34,6 +34,13 @@ export function YouScreen() {
   const [keyError, setKeyError] = useState('')
   const [models, setModels] = useState<ModelOption[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
+  const [modelOpen, setModelOpen] = useState(false)
+  const [pwOpen, setPwOpen] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSaved, setPwSaved] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
   const MAX_SLOTS = 3
 
   useEffect(() => {
@@ -59,7 +66,26 @@ export function YouScreen() {
 
   async function handleModelChange(modelId: string) {
     setApiKeyStatus((s) => ({ ...s, model: modelId }))
+    setModelOpen(false)
     await api.patch('/api/settings', { apiModel: modelId })
+  }
+
+  async function changePassword() {
+    if (newPw.length < 8) { setPwError('New password must be at least 8 characters'); return }
+    setPwLoading(true)
+    setPwError('')
+    try {
+      await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw })
+      setPwSaved(true)
+      setCurrentPw('')
+      setNewPw('')
+      setPwOpen(false)
+      setTimeout(() => setPwSaved(false), 2000)
+    } catch (err: unknown) {
+      setPwError(err instanceof Error ? err.message : 'Failed to change password')
+    } finally {
+      setPwLoading(false)
+    }
   }
 
   async function saveName() {
@@ -193,16 +219,34 @@ export function YouScreen() {
                     {modelsLoading ? (
                       <p className="font-sans text-xs text-ink/30 animate-pulse">Loading models...</p>
                     ) : models.length > 0 ? (
-                      <select
-                        value={apiKeyStatus.model ?? ''}
-                        onChange={(e) => handleModelChange(e.target.value)}
-                        className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor"
-                      >
-                        <option value="">Default (gemini-2.5-flash)</option>
-                        {models.map((m) => (
-                          <option key={m.id} value={m.id}>{m.displayName}</option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          onClick={() => setModelOpen((o) => !o)}
+                          className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink text-left flex items-center justify-between focus:border-harbor outline-none"
+                        >
+                          <span>{models.find((m) => m.id === apiKeyStatus.model)?.displayName ?? 'Default (gemini-2.5-flash)'}</span>
+                          <span className="text-ink/30 text-xs ml-2">▾</span>
+                        </button>
+                        {modelOpen && (
+                          <div className="absolute z-10 w-full border border-ink-10 bg-white shadow-sm mt-px max-h-48 overflow-y-auto">
+                            <button
+                              onClick={() => handleModelChange('')}
+                              className={cn('w-full text-left px-3 py-2 text-sm font-sans hover:bg-harbor/5 transition-colors', !apiKeyStatus.model ? 'text-harbor font-medium' : 'text-ink')}
+                            >
+                              Default (gemini-2.5-flash)
+                            </button>
+                            {models.map((m) => (
+                              <button
+                                key={m.id}
+                                onClick={() => handleModelChange(m.id)}
+                                className={cn('w-full text-left px-3 py-2 text-sm font-sans hover:bg-harbor/5 transition-colors border-t border-ink-10/50', apiKeyStatus.model === m.id ? 'text-harbor font-medium' : 'text-ink')}
+                              >
+                                {m.displayName}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <p className="font-sans text-xs text-ink/30">Could not load models</p>
                     )}
@@ -249,11 +293,48 @@ export function YouScreen() {
       {/* Account */}
       <section>
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Account</h2>
-        <div className="border border-ink-10 bg-white p-4">
-          <p className="font-sans text-xs text-ink/50 mb-3">All data is stored on your server. Nothing leaves it.</p>
-          <button onClick={logout} className="px-4 py-2 border border-ink-10 text-ink/60 text-sm font-sans font-medium hover:border-brick hover:text-brick transition-colors">
-            Sign out
-          </button>
+        <div className="border border-ink-10 bg-white divide-y divide-ink-10">
+          <div className="p-4">
+            <button
+              onClick={() => { setPwOpen((o) => !o); setPwError('') }}
+              className="font-sans text-sm font-medium text-ink hover:text-harbor transition-colors"
+            >
+              {pwOpen ? 'Cancel' : 'Change password'}
+              {pwSaved && <span className="ml-2 text-sage text-xs font-normal">Changed</span>}
+            </button>
+            {pwOpen && (
+              <div className="mt-3 flex flex-col gap-2">
+                <input
+                  type="password"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  placeholder="Current password"
+                  className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30"
+                />
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="New password (min 8 chars)"
+                  className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30"
+                />
+                {pwError && <p className="font-sans text-xs text-brick">{pwError}</p>}
+                <button
+                  onClick={changePassword}
+                  disabled={pwLoading || !currentPw || !newPw}
+                  className="px-4 py-2 bg-harbor text-parchment text-sm font-sans font-medium disabled:opacity-40 self-start"
+                >
+                  {pwLoading ? 'Saving...' : 'Update password'}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="p-4">
+            <p className="font-sans text-xs text-ink/40 mb-3">All data stored on your server.</p>
+            <button onClick={logout} className="px-4 py-2 border border-ink-10 text-ink/60 text-sm font-sans font-medium hover:border-brick hover:text-brick transition-colors">
+              Sign out
+            </button>
+          </div>
         </div>
       </section>
     </div>
