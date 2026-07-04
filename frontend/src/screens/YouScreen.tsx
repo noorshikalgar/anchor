@@ -23,7 +23,7 @@ interface ModelOption {
 
 export function YouScreen() {
   const { user, setUser } = useAuthStore()
-  const { aiEnabled, setAiEnabled } = useAppStore()
+  const { aiEnabled, setAiEnabled, weekStartsOn, setWeekStartsOn } = useAppStore()
   const [nameInput, setNameInput] = useState(user?.name ?? '')
   const [saved, setSaved] = useState(false)
   const [slotData, setSlotData] = useState<SlotData>({ slotsUnlocked: 1, nextUnlock: null })
@@ -110,6 +110,11 @@ export function YouScreen() {
     const next = !aiEnabled
     setAiEnabled(next)
     await api.patch('/api/settings', { aiEnabled: next })
+  }
+
+  async function handleWeekStartChange(day: 0 | 1) {
+    setWeekStartsOn(day)
+    await api.patch('/api/settings', { weekStartsOn: day })
   }
 
   async function saveApiKey() {
@@ -301,6 +306,30 @@ export function YouScreen() {
         </div>
       </section>
 
+      {/* Preferences */}
+      <section className="mb-6">
+        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Preferences</h2>
+        <div className="border border-ink-10 bg-white p-4">
+          <p className="font-sans text-xs font-medium text-ink/60 mb-2">Week starts on</p>
+          <div className="flex gap-2">
+            {([1, 0] as const).map((day) => (
+              <button
+                key={day}
+                onClick={() => handleWeekStartChange(day)}
+                className={cn(
+                  'flex-1 py-2 border text-xs font-sans font-medium transition-colors',
+                  weekStartsOn === day
+                    ? 'bg-harbor border-harbor text-parchment'
+                    : 'border-ink-10 text-ink/50 hover:border-harbor hover:text-harbor',
+                )}
+              >
+                {day === 1 ? 'Monday' : 'Sunday'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Account */}
       <section>
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Account</h2>
@@ -345,6 +374,9 @@ export function YouScreen() {
             <button onClick={logout} className="px-4 py-2 border border-ink-10 text-ink/60 text-sm font-sans font-medium hover:border-brick hover:text-brick transition-colors">
               Sign out
             </button>
+          </div>
+          <div className="px-4 py-3">
+            <p className="font-mono text-xs text-ink/25">Anchor v{__APP_VERSION__}</p>
           </div>
         </div>
       </section>
