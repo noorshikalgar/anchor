@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
@@ -35,6 +35,7 @@ export function YouScreen() {
   const [models, setModels] = useState<ModelOption[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
+  const modelRef = useRef<HTMLDivElement>(null)
   const [pwOpen, setPwOpen] = useState(false)
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -51,6 +52,16 @@ export function YouScreen() {
       if (status.configured) loadModels()
     }).catch(() => {})
   }, [user])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (modelRef.current && !modelRef.current.contains(e.target as Node)) {
+        setModelOpen(false)
+      }
+    }
+    if (modelOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [modelOpen])
 
   async function loadModels() {
     setModelsLoading(true)
@@ -219,7 +230,7 @@ export function YouScreen() {
                     {modelsLoading ? (
                       <p className="font-sans text-xs text-ink/30 animate-pulse">Loading models...</p>
                     ) : models.length > 0 ? (
-                      <div className="relative">
+                      <div className="relative" ref={modelRef}>
                         <button
                           onClick={() => setModelOpen((o) => !o)}
                           className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink text-left flex items-center justify-between focus:border-harbor outline-none"
@@ -228,7 +239,7 @@ export function YouScreen() {
                           <span className="text-ink/30 text-xs ml-2">▾</span>
                         </button>
                         {modelOpen && (
-                          <div className="absolute z-10 w-full border border-ink-10 bg-white shadow-sm mt-px max-h-48 overflow-y-auto">
+                          <div className="absolute z-10 w-full border border-ink-10 bg-white shadow-sm bottom-full mb-px max-h-48 overflow-y-auto">
                             <button
                               onClick={() => handleModelChange('')}
                               className={cn('w-full text-left px-3 py-2 text-sm font-sans hover:bg-harbor/5 transition-colors', !apiKeyStatus.model ? 'text-harbor font-medium' : 'text-ink')}
