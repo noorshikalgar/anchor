@@ -31,7 +31,7 @@ router.post('/generate', async (req, res) => {
   try {
     const apiKey = decrypt(settings.apiKeyEncrypted)
     const planInput = await buildPlanInput(req.userId)
-    const plan = await generatePlan(apiKey, planInput, parsed.data.userContext)
+    const plan = await generatePlan(apiKey, planInput, parsed.data.userContext, settings.apiModel ?? undefined)
     res.json({ ...plan, source: 'gemini' })
   } catch (err: unknown) {
     console.error('Gemini plan error:', err)

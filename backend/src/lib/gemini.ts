@@ -57,10 +57,12 @@ Rules:
 - recentDailyNotes: user's own words about their days. Use these as primary context — they explain missed habits better than numbers.
 - summary: 2-3 sentences max. Plain language. What to focus on, what changed.`
 
-export async function generatePlan(apiKey: string, planInput: unknown, userContext?: string): Promise<z.infer<typeof PlanOutputSchema>> {
+const DEFAULT_MODEL = 'gemini-2.5-flash'
+
+export async function generatePlan(apiKey: string, planInput: unknown, userContext?: string, model = DEFAULT_MODEL): Promise<z.infer<typeof PlanOutputSchema>> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+  const model_ = genAI.getGenerativeModel({
+    model,
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
       responseMimeType: 'application/json',
@@ -74,7 +76,7 @@ export async function generatePlan(apiKey: string, planInput: unknown, userConte
     'Generate the weekly plan.',
   ].filter(Boolean).join('\n\n')
 
-  const result = await model.generateContent(prompt)
+  const result = await model_.generateContent(prompt)
   const text = result.response.text()
   const parsed = JSON.parse(text)
   return PlanOutputSchema.parse(parsed)

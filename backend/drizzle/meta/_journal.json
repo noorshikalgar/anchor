@@ -8,6 +8,13 @@
       "when": 1783179732243,
       "tag": "0000_neat_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783181652748,
+      "tag": "0001_unknown_scrambler",
+      "breakpoints": true
     }
   ]
 }
