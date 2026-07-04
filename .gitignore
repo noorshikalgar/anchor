@@ -6,6 +6,11 @@ backend/node_modules/
 # Build output
 frontend/dist/
 backend/dist/
+dist/
+
+# Vite cache
+.vite/
+frontend/.vite/
 
 # Data (SQLite DB — never commit)
 data/
