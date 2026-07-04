@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
 import { useAppStore } from '@/lib/store'
@@ -9,16 +10,28 @@ interface SlotData {
   nextUnlock: { targetSlots: number; requirement: string } | null
 }
 
+interface ApiKeyStatus {
+  configured: boolean
+  provider: string | null
+}
+
 export function YouScreen() {
   const { user, setUser } = useAuthStore()
   const { aiEnabled, setAiEnabled } = useAppStore()
   const [nameInput, setNameInput] = useState(user?.name ?? '')
   const [saved, setSaved] = useState(false)
   const [slotData, setSlotData] = useState<SlotData>({ slotsUnlocked: 1, nextUnlock: null })
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>({ configured: false, provider: null })
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [keyLoading, setKeyLoading] = useState(false)
+  const [keyError, setKeyError] = useState('')
+  const MAX_SLOTS = 3
 
   useEffect(() => {
     setNameInput(user?.name ?? '')
     api.get<SlotData>('/api/slots').then(setSlotData).catch(() => {})
+    api.get<ApiKeyStatus>('/api/settings/apikey/status').then(setApiKeyStatus).catch(() => {})
   }, [user])
 
   async function saveName() {
@@ -34,17 +47,36 @@ export function YouScreen() {
     await api.patch('/api/settings', { aiEnabled: next })
   }
 
+  async function saveApiKey() {
+    if (!apiKeyInput.trim()) return
+    setKeyLoading(true)
+    setKeyError('')
+    try {
+      const res = await api.put<ApiKeyStatus & { masked: string }>('/api/settings/apikey', { apiKey: apiKeyInput.trim() })
+      setApiKeyStatus({ configured: res.configured, provider: res.provider })
+      setApiKeyInput('')
+    } catch (err: unknown) {
+      setKeyError(err instanceof Error ? err.message : 'Failed to save key')
+    } finally {
+      setKeyLoading(false)
+    }
+  }
+
+  async function removeApiKey() {
+    await api.del('/api/settings/apikey')
+    setApiKeyStatus({ configured: false, provider: null })
+  }
+
   async function logout() {
     await api.post('/auth/logout', {})
     setUser(null)
   }
 
-  const MAX_SLOTS = 3
-
   return (
     <div className="px-4 pt-6 pb-4">
       <h1 className="font-display text-2xl font-semibold text-ink mb-5">You</h1>
 
+      {/* Profile */}
       <section className="mb-6">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Profile</h2>
         <div className="border border-ink-10 bg-white p-4">
@@ -65,6 +97,7 @@ export function YouScreen() {
         </div>
       </section>
 
+      {/* Focus slots */}
       <section className="mb-6">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Focus slots</h2>
         <div className="border border-ink-10 bg-white p-4">
@@ -77,22 +110,22 @@ export function YouScreen() {
               <div key={i} className={cn('h-2 flex-1', i < slotData.slotsUnlocked ? 'bg-harbor' : 'bg-ink/10')} />
             ))}
           </div>
-          {slotData.nextUnlock ? (
-            <p className="font-sans text-xs text-ink/50">{slotData.nextUnlock.requirement}</p>
-          ) : (
-            <p className="font-sans text-xs text-sage">All slots unlocked. You earned them.</p>
-          )}
+          {slotData.nextUnlock
+            ? <p className="font-sans text-xs text-ink/50">{slotData.nextUnlock.requirement}</p>
+            : <p className="font-sans text-xs text-sage">All slots unlocked. You earned them.</p>
+          }
         </div>
       </section>
 
+      {/* AI settings */}
       <section className="mb-6">
-        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Settings</h2>
+        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">AI planning</h2>
         <div className="border border-ink-10 bg-white divide-y divide-ink-10">
           <div className="p-4 flex items-center justify-between">
             <div>
               <p className="font-sans text-sm font-medium text-ink">AI planning</p>
               <p className="font-sans text-xs text-ink/40 mt-0.5">
-                {aiEnabled ? 'On — AI proposes weekly plan' : 'Off — rule-based planner active'}
+                {aiEnabled ? 'On — Gemini proposes weekly plan' : 'Off — rule-based planner active'}
               </p>
             </div>
             <button
@@ -104,9 +137,65 @@ export function YouScreen() {
               {aiEnabled ? 'ON' : 'OFF'}
             </button>
           </div>
+
+          {aiEnabled && (
+            <div className="p-4">
+              <p className="font-sans text-xs font-medium text-ink/60 mb-3">
+                Gemini API key
+                {apiKeyStatus.configured && (
+                  <span className="ml-2 text-sage font-normal">● configured</span>
+                )}
+              </p>
+
+              {apiKeyStatus.configured ? (
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-xs text-ink/40 flex-1">Key saved — never shown again</p>
+                  <button
+                    onClick={removeApiKey}
+                    className="flex items-center gap-1 px-2 py-1 border border-brick/40 text-brick text-xs font-sans hover:bg-brick hover:text-white transition-colors"
+                  >
+                    <Trash2 size={11} /> Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showKey ? 'text' : 'password'}
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        placeholder="Paste Gemini API key"
+                        className="w-full border border-ink-10 px-3 py-2 pr-9 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60"
+                      >
+                        {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={saveApiKey}
+                      disabled={keyLoading || !apiKeyInput.trim()}
+                      className="px-4 py-2 bg-harbor text-parchment text-sm font-sans font-medium disabled:opacity-40"
+                    >
+                      {keyLoading ? '...' : 'Save'}
+                    </button>
+                  </div>
+                  {keyError && <p className="font-sans text-xs text-brick">{keyError}</p>}
+                  <p className="font-sans text-xs text-ink/30">
+                    Key is encrypted before storage. Never logged or shared.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
+      {/* Account */}
       <section>
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Account</h2>
         <div className="border border-ink-10 bg-white p-4">
