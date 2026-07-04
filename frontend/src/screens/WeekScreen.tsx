@@ -1,16 +1,31 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { weekDays, weekStart } from '@/lib/dates'
-import { buildFallbackPlan } from '@/lib/fallback'
 import { cn } from '@/lib/utils'
 import { format, parseISO } from 'date-fns'
-import { Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, TrendingUp, RefreshCw, type LucideIcon } from 'lucide-react'
+import { useAppStore } from '@/lib/store'
 import type { Habit } from '@/types/habit'
 import type { Checkin } from '@/types/checkin'
 
 const ICONS: Record<string, LucideIcon> = {
   moon: Moon, salad: Salad, dumbbell: Dumbbell, code: Code,
   'book-open': BookOpen, sparkles: Sparkles, smartphone: Smartphone,
+}
+
+interface HabitRec {
+  habitId: string
+  action: 'maintain' | 'shrink' | 'graduate'
+  reason: string
+}
+
+interface PlanResult {
+  summary: string
+  habitRecommendations: HabitRec[]
+  newHabitSuggestion: { habitId: string; reason: string } | null
+  disruptionPrediction: string | null
+  source: 'gemini' | 'rule-based'
+  warning?: string
 }
 
 function HabitWeekRow({ habit, weekCheckins }: { habit: Habit; weekCheckins: Checkin[] }) {
@@ -45,36 +60,160 @@ function HabitWeekRow({ habit, weekCheckins }: { habit: Habit; weekCheckins: Che
   )
 }
 
+function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: Map<string, string>; onRefresh: () => void }) {
+  const [contextInput, setContextInput] = useState('')
+  const [adjustMode, setAdjustMode] = useState(false)
+  const [accepted, setAccepted] = useState(false)
+  const [skipped, setSkipped] = useState(false)
+
+  const actionColor = (action: HabitRec['action']) =>
+    action === 'maintain' ? 'text-sage' : action === 'shrink' ? 'text-ochre' : 'text-harbor'
+  const actionLabel = (action: HabitRec['action']) =>
+    action === 'maintain' ? 'Maintain' : action === 'shrink' ? 'Shrink' : 'Graduate'
+
+  if (accepted) {
+    return (
+      <div className="border border-sage bg-sage/5 p-4 mb-5">
+        <p className="font-sans text-xs font-medium text-sage uppercase tracking-widest mb-1">Plan accepted</p>
+        <p className="font-sans text-sm text-ink">{plan.summary}</p>
+      </div>
+    )
+  }
+
+  if (skipped) {
+    return (
+      <div className="border border-ink-10 bg-white p-4 mb-5">
+        <p className="font-sans text-xs text-ink/40">Plan skipped — log habits manually as usual.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-harbor bg-harbor/5 p-4 mb-5">
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-sans text-[10px] font-medium text-harbor/70 uppercase tracking-widest">
+          {plan.source === 'gemini' ? 'AI plan — Gemini' : 'Plan'}
+        </p>
+        <button onClick={onRefresh} className="text-ink/30 hover:text-harbor transition-colors">
+          <RefreshCw size={13} />
+        </button>
+      </div>
+      {plan.warning && (
+        <p className="font-sans text-xs text-ochre mb-2">{plan.warning}</p>
+      )}
+      <p className="font-sans text-sm text-ink leading-relaxed mb-3">{plan.summary}</p>
+
+      {plan.habitRecommendations.length > 0 && (
+        <div className="flex flex-col gap-1.5 mb-3">
+          {plan.habitRecommendations.map((rec) => (
+            <div key={rec.habitId} className="flex items-start gap-2">
+              <span className={cn('font-sans text-xs font-medium min-w-[56px]', actionColor(rec.action))}>
+                {actionLabel(rec.action)}
+              </span>
+              <span className="font-sans text-xs text-ink/60 flex-1">
+                <span className="font-medium text-ink/80">{habitMap.get(rec.habitId) ?? rec.habitId}</span>
+                {' — '}{rec.reason}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {plan.newHabitSuggestion && (
+        <div className="border-t border-harbor/20 pt-3 mb-3">
+          <p className="font-sans text-xs text-ochre font-medium">Consider adding: {habitMap.get(plan.newHabitSuggestion.habitId) ?? plan.newHabitSuggestion.habitId}</p>
+          <p className="font-sans text-xs text-ink/50 mt-0.5">{plan.newHabitSuggestion.reason}</p>
+        </div>
+      )}
+
+      {plan.disruptionPrediction && (
+        <div className="border-t border-harbor/20 pt-3 mb-3">
+          <p className="font-sans text-xs text-ink/50">{plan.disruptionPrediction}</p>
+        </div>
+      )}
+
+      {adjustMode ? (
+        <div className="border-t border-harbor/20 pt-3">
+          <p className="font-sans text-xs text-ink/50 mb-2">Add context — upcoming travel, events, or anything that'll affect this week:</p>
+          <textarea
+            value={contextInput}
+            onChange={(e) => setContextInput(e.target.value)}
+            placeholder="e.g. Office trip Tue–Thu, late nights expected..."
+            maxLength={500}
+            rows={2}
+            className="w-full border border-ink-10 px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor bg-parchment/30 resize-none"
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => { setAdjustMode(false); onRefresh(); }}
+              className="flex-1 py-2 bg-harbor text-parchment text-xs font-sans font-medium"
+            >
+              Re-generate
+            </button>
+            <button onClick={() => setAdjustMode(false)} className="px-3 py-2 border border-ink-10 text-ink/50 text-xs font-sans">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2 mt-3 border-t border-harbor/20 pt-3">
+          <button onClick={() => setAccepted(true)} className="flex-1 py-2 bg-harbor text-parchment text-xs font-sans font-medium">
+            Accept
+          </button>
+          <button onClick={() => setAdjustMode(true)} className="flex-1 py-2 border border-harbor text-harbor text-xs font-sans font-medium">
+            Adjust
+          </button>
+          <button onClick={() => setSkipped(true)} className="flex-1 py-2 border border-ink-10 text-ink/50 text-xs font-sans">
+            Skip
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function WeekScreen() {
   const currentWeekStart = weekStart()
+  const { aiEnabled } = useAppStore()
   const [focusHabits, setFocusHabits] = useState<Habit[]>([])
-  const [backlog, setBacklog] = useState<Habit[]>([])
   const [weekCheckins, setWeekCheckins] = useState<Checkin[]>([])
-  const [allCheckins, setAllCheckins] = useState<Checkin[]>([])
+  const [plan, setPlan] = useState<PlanResult | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
 
   const loadData = useCallback(async () => {
     const days = weekDays()
     const from = format(days[0], 'yyyy-MM-dd')
     const to = format(days[6], 'yyyy-MM-dd')
-    const [habits, checkins, all] = await Promise.all([
+    const [habits, checkins] = await Promise.all([
       api.get<Habit[]>('/api/habits'),
       api.get<Checkin[]>(`/api/checkins?from=${from}&to=${to}`),
-      api.get<Checkin[]>('/api/checkins'),
     ])
     setFocusHabits(habits.filter((h) => h.inFocus === 1).sort((a, b) => a.focusOrder - b.focusOrder))
-    setBacklog(habits.filter((h) => h.inFocus === 0))
     setWeekCheckins(checkins)
-    setAllCheckins(all)
+  }, [])
+
+  const loadPlan = useCallback(async (context?: string) => {
+    setPlanLoading(true)
+    try {
+      const result = await api.post<PlanResult>('/api/plan/generate', context ? { userContext: context } : {})
+      setPlan(result)
+    } catch {
+      // plan stays null — UI handles empty state
+    } finally {
+      setPlanLoading(false)
+    }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+  useEffect(() => { loadPlan() }, [loadPlan])
 
-  const plan = buildFallbackPlan(focusHabits, backlog, allCheckins)
   const days = weekDays()
   const totalPossible = focusHabits.length * days.filter((d) => d <= new Date()).length
   const totalDone = weekCheckins.filter((c) => c.status === 'done').length
   const totalPartial = weekCheckins.filter((c) => c.status === 'partial').length
   const overallRate = totalPossible > 0 ? Math.round(((totalDone + totalPartial * 0.5) / totalPossible) * 100) : 0
+
+  const habitMap = new Map(focusHabits.map((h) => [h.id, h.name]))
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -82,15 +221,21 @@ export function WeekScreen() {
       <p className="font-sans text-xs text-ink/40 mb-5">
         {format(parseISO(currentWeekStart), 'd MMM')} — {format(days[6], 'd MMM yyyy')}
       </p>
-      <div className="border border-harbor bg-harbor/5 p-4 mb-5">
-        <p className="font-sans text-[10px] font-medium text-harbor/70 uppercase tracking-widest mb-2">This week's plan</p>
-        <p className="font-sans text-sm text-ink leading-relaxed">{plan.summary}</p>
-        {plan.newHabitId && plan.newHabitReason && (
-          <div className="mt-3 pt-3 border-t border-harbor/20">
-            <p className="font-sans text-xs text-ochre font-medium">{plan.newHabitReason}</p>
-          </div>
-        )}
-      </div>
+
+      {planLoading ? (
+        <div className="border border-harbor bg-harbor/5 p-4 mb-5">
+          <p className="font-sans text-xs text-harbor/60 animate-pulse">
+            {aiEnabled ? 'Gemini is thinking...' : 'Building your plan...'}
+          </p>
+        </div>
+      ) : plan ? (
+        <PlanCard plan={plan} habitMap={habitMap} onRefresh={() => loadPlan()} />
+      ) : (
+        <div className="border border-ink-10 bg-white p-4 mb-5">
+          <p className="font-sans text-xs text-ink/40">Could not load plan. Check your settings.</p>
+        </div>
+      )}
+
       {focusHabits.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-3">
