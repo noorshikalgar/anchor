@@ -7,19 +7,26 @@ import { YouScreen } from '@/screens/YouScreen'
 import { LoginScreen } from '@/screens/LoginScreen'
 import { RegisterScreen } from '@/screens/RegisterScreen'
 import { useAuthStore } from '@/lib/authStore'
+import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 
 export default function App() {
   const { user, setUser, loading, setLoading } = useAuthStore()
+  const { setWeekStartsOn } = useAppStore()
   const [screen, setScreen] = useState<Screen>('today')
   const [authView, setAuthView] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
     api.get<{ id: string; email: string; name: string }>('/auth/me')
-      .then(setUser)
+      .then((u) => {
+        setUser(u)
+        api.get<{ weekStartsOn: 0 | 1 }>('/api/settings')
+          .then((s) => setWeekStartsOn(s.weekStartsOn))
+          .catch(() => {})
+      })
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
-  }, [setUser, setLoading])
+  }, [setUser, setLoading, setWeekStartsOn])
 
   if (loading) {
     return (
