@@ -28,13 +28,39 @@ export async function seedHabitsForUser(userId: string) {
   await db.insert(habits).values(values).onConflictDoNothing()
 }
 
+const CreateHabitSchema = z.object({
+  name: z.string().min(1).max(100),
+  slot: z.string().default('anytime'),
+  icon: z.string().default('sparkles'),
+  category: z.string().default('custom'),
+  defaultVersion: z.string().min(1).max(500),
+  fallbackVersion: z.string().min(1).max(500),
+})
+
 const UpdateHabitSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   inFocus: z.union([z.literal(0), z.literal(1)]).optional(),
   focusOrder: z.number().int().optional(),
   slot: z.string().optional(),
-  defaultVersion: z.string().optional(),
-  fallbackVersion: z.string().optional(),
+  icon: z.string().optional(),
+  defaultVersion: z.string().max(500).optional(),
+  fallbackVersion: z.string().max(500).optional(),
+})
+
+router.post('/', async (req, res) => {
+  const parsed = CreateHabitSchema.safeParse(req.body)
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return }
+
+  const id = `custom-${Date.now()}`
+  const [habit] = await db.insert(habits).values({
+    id, userId: req.userId, ...parsed.data, inFocus: 0, focusOrder: 999,
+  }).returning()
+  res.status(201).json(habit)
+})
+
+router.delete('/:id', async (req, res) => {
+  await db.delete(habits).where(and(eq(habits.id, req.params.id), eq(habits.userId, req.userId)))
+  res.json({ ok: true })
 })
 
 router.get('/', async (req, res) => {
