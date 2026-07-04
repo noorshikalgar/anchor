@@ -86,16 +86,18 @@ router.get('/models', async (req, res) => {
     if (!r.ok) { res.status(r.status).json({ error: 'Gemini API error' }); return }
 
     const data = await r.json() as { models: { name: string; displayName: string; supportedGenerationMethods: string[] }[] }
+    const id = (m: { name: string }) => m.name.replace('models/', '')
     const models = (data.models ?? [])
       .filter((m) =>
         m.supportedGenerationMethods.includes('generateContent') &&
-        m.name.includes('gemini') &&
-        !m.name.includes('embedding') &&
-        !m.name.includes('aqa') &&
-        (m.displayName.toLowerCase().includes('flash') || m.displayName.toLowerCase().includes('pro'))
+        id(m).startsWith('gemini-') &&
+        !id(m).includes('embedding') &&
+        !id(m).includes('aqa') &&
+        !id(m).includes('nano') &&
+        (id(m).includes('flash') || id(m).includes('pro'))
       )
       .map((m) => ({
-        id: m.name.replace('models/', ''),
+        id: id(m),
         displayName: m.displayName,
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName))
