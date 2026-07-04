@@ -166,24 +166,26 @@ export function FocusScreen() {
               return (
                 <div key={h.id}>
                   <div className="flex gap-1">
-                    <div className="flex flex-col gap-1">
-                      <button
-                        onClick={() => reorder(i, 'up')}
-                        disabled={i === 0}
-                        className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/30 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                      ><ChevronUp size={12} /></button>
-                      <button
-                        onClick={() => reorder(i, 'down')}
-                        disabled={i === focusHabits.length - 1}
-                        className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/30 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                      ><ChevronDown size={12} /></button>
-                    </div>
+                    {focusHabits.length > 1 && (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => reorder(i, 'up')}
+                          disabled={i === 0}
+                          className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/40 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        ><ChevronUp size={12} /></button>
+                        <button
+                          onClick={() => reorder(i, 'down')}
+                          disabled={i === focusHabits.length - 1}
+                          className="w-6 h-7 flex items-center justify-center border border-ink-10 text-ink/40 hover:text-harbor hover:border-harbor disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        ><ChevronDown size={12} /></button>
+                      </div>
+                    )}
                     <div className="flex-1">
                       <HabitItem habit={h} inFocus={true} onToggle={() => toggleFocus(h)} disabled={false} />
                     </div>
                   </div>
                   {streak && streak.streak > 0 && (
-                    <div className={cn('px-4 py-1.5 border-x border-b border-ink-10 bg-parchment/40 flex items-center gap-2 ml-7')}>
+                    <div className={cn('px-4 py-1.5 border-x border-b border-ink-10 bg-parchment/40 flex items-center gap-2', focusHabits.length > 1 && 'ml-7')}>
                       <div className={cn('w-2 h-2', streak.streak >= streak.target ? 'bg-sage' : 'bg-harbor')} />
                       <span className="font-mono text-xs text-ink/50">
                         {streak.streak} day streak
