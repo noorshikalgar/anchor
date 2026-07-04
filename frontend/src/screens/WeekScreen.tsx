@@ -60,7 +60,7 @@ function HabitWeekRow({ habit, weekCheckins }: { habit: Habit; weekCheckins: Che
   )
 }
 
-function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: Map<string, string>; onRefresh: () => void }) {
+function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: Map<string, string>; onRefresh: (context?: string) => void }) {
   const [contextInput, setContextInput] = useState('')
   const [adjustMode, setAdjustMode] = useState(false)
   const [accepted, setAccepted] = useState(false)
@@ -145,7 +145,7 @@ function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: M
           />
           <div className="flex gap-2 mt-2">
             <button
-              onClick={() => { setAdjustMode(false); onRefresh(); }}
+              onClick={() => { setAdjustMode(false); onRefresh(contextInput.trim() || undefined) }}
               className="flex-1 py-2 bg-harbor text-parchment text-xs font-sans font-medium"
             >
               Re-generate

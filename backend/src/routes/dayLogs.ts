@@ -9,8 +9,9 @@ const router = Router()
 router.use(authenticate)
 
 const DayLogSchema = z.object({
-  disrupted: z.boolean(),
-  disruptionNote: z.string().optional(),
+  disrupted: z.boolean().optional(),
+  disruptionNote: z.string().max(1000).optional(),
+  note: z.string().max(1000).optional(),
 })
 
 router.get('/', async (req, res) => {
@@ -30,18 +31,21 @@ router.put('/:date', async (req, res) => {
   const parsed = DayLogSchema.safeParse(req.body)
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return }
 
+  const { note, ...rest } = parsed.data
+  const payload = { ...rest, ...(note !== undefined ? { disruptionNote: note } : {}) }
+
   const existing = await db.select().from(dayLogs)
     .where(and(eq(dayLogs.date, date), eq(dayLogs.userId, req.userId)))
 
   let row
   if (existing.length > 0) {
     ;[row] = await db.update(dayLogs)
-      .set(parsed.data)
+      .set(payload)
       .where(and(eq(dayLogs.date, date), eq(dayLogs.userId, req.userId)))
       .returning()
   } else {
     ;[row] = await db.insert(dayLogs)
-      .values({ date, userId: req.userId, ...parsed.data })
+      .values({ date, userId: req.userId, disrupted: false, ...payload })
       .returning()
   }
 

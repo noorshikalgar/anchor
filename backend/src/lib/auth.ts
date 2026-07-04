@@ -16,7 +16,7 @@ export function verifyToken(token: string): { sub: string } {
 export function setAuthCookie(res: Response, token: string) {
   res.cookie(COOKIE, token, {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',

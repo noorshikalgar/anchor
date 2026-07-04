@@ -50,15 +50,17 @@ const SYSTEM_PROMPT = `You are Anchor, a calm and practical habit coach. Your jo
 Rules:
 - Be specific and grounded in the data. Do not give generic advice.
 - Tone: direct, warm, non-judgmental. No exclamation points.
-- If completion rate < 50%, suggest shrinking to fallback version, not removing the habit.
+- If isNew is true OR logsLast7 === 0, the habit was just added or tracking just started. Do NOT penalize. Action must be "maintain". Encourage first attempt.
+- If completion rate < 50% AND logsLast7 >= 3, suggest shrinking to fallback version, not removing the habit.
 - Only suggest adding a new habit if all focus habits have streak >= 5 days AND slotsUnlocked allows it.
 - disruptionPrediction: only include if there is a clear pattern (e.g. same day disrupted 3+ times). Null otherwise.
+- recentDailyNotes: user's own words about their days. Use these as primary context — they explain missed habits better than numbers.
 - summary: 2-3 sentences max. Plain language. What to focus on, what changed.`
 
 export async function generatePlan(apiKey: string, planInput: unknown, userContext?: string): Promise<z.infer<typeof PlanOutputSchema>> {
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
       responseMimeType: 'application/json',

@@ -1,7 +1,7 @@
 import { format, subDays, parseISO, getDay } from 'date-fns'
 import { eq, and, gte } from 'drizzle-orm'
 import { db } from '../db'
-import { habits, checkins, userSettings } from '../db/schema'
+import { habits, checkins, userSettings, dayLogs } from '../db/schema'
 import { computeStreak } from './streaks'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -11,10 +11,12 @@ export async function buildPlanInput(userId: string) {
   const lookback28 = format(subDays(new Date(), 28), 'yyyy-MM-dd')
   const lookback7 = format(subDays(new Date(), 7), 'yyyy-MM-dd')
 
-  const [allHabits, recent28, settings] = await Promise.all([
+  const [allHabits, recent28, settings, recentLogs] = await Promise.all([
     db.select().from(habits).where(eq(habits.userId, userId)).orderBy(habits.focusOrder),
     db.select().from(checkins).where(and(eq(checkins.userId, userId), gte(checkins.date, lookback28))),
     db.select().from(userSettings).where(eq(userSettings.userId, userId)),
+    db.select({ date: dayLogs.date, note: dayLogs.disruptionNote })
+      .from(dayLogs).where(and(eq(dayLogs.userId, userId), gte(dayLogs.date, lookback7))),
   ])
 
   const focusHabits = allHabits.filter((h) => h.inFocus === 1)
@@ -40,8 +42,10 @@ export async function buildPlanInput(userId: string) {
       slot: h.slot,
       defaultVersion: h.defaultVersion,
       completionRateLast7: Math.round(completionRateLast7 * 100) / 100,
+      logsLast7: h7.length,
       streak: computeStreak(h.id, recent28, today),
       topDisruptionReason,
+      isNew: h7.length === 0 && recent28.filter((c) => c.habitId === h.id).length === 0,
     }
   })
 
@@ -75,5 +79,8 @@ export async function buildPlanInput(userId: string) {
       mostDisruptedDayOfWeek: worstDow >= 0 && worstRate > 0.4 ? DAY_NAMES[worstDow] : null,
       disruptionFrequency,
     },
+    recentDailyNotes: recentLogs
+      .filter((l) => l.note)
+      .map((l) => ({ date: l.date, note: l.note })),
   }
 }
