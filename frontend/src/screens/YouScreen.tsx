@@ -4,13 +4,22 @@ import { useAuthStore } from '@/lib/authStore'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
+interface SlotData {
+  slotsUnlocked: number
+  nextUnlock: { targetSlots: number; requirement: string } | null
+}
+
 export function YouScreen() {
   const { user, setUser } = useAuthStore()
-  const { focusCap, aiEnabled, setFocusCap, setAiEnabled } = useAppStore()
+  const { aiEnabled, setAiEnabled } = useAppStore()
   const [nameInput, setNameInput] = useState(user?.name ?? '')
   const [saved, setSaved] = useState(false)
+  const [slotData, setSlotData] = useState<SlotData>({ slotsUnlocked: 1, nextUnlock: null })
 
-  useEffect(() => { setNameInput(user?.name ?? '') }, [user])
+  useEffect(() => {
+    setNameInput(user?.name ?? '')
+    api.get<SlotData>('/api/slots').then(setSlotData).catch(() => {})
+  }, [user])
 
   async function saveName() {
     const updated = await api.patch<{ id: string; email: string; name: string }>('/api/settings/name', { name: nameInput.trim() || user?.name })
@@ -30,6 +39,8 @@ export function YouScreen() {
     setUser(null)
   }
 
+  const MAX_SLOTS = 3
+
   return (
     <div className="px-4 pt-6 pb-4">
       <h1 className="font-display text-2xl font-semibold text-ink mb-5">You</h1>
@@ -37,8 +48,8 @@ export function YouScreen() {
       <section className="mb-6">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Profile</h2>
         <div className="border border-ink-10 bg-white p-4">
-          <p className="font-sans text-xs text-ink/40 mb-1">{user?.email}</p>
-          <label className="font-sans text-xs text-ink/50 block mb-1 mt-3">Display name</label>
+          <p className="font-sans text-xs text-ink/40 mb-3">{user?.email}</p>
+          <label className="font-sans text-xs text-ink/50 block mb-1">Display name</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -55,23 +66,34 @@ export function YouScreen() {
       </section>
 
       <section className="mb-6">
+        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Focus slots</h2>
+        <div className="border border-ink-10 bg-white p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-sans text-sm font-medium text-ink">Slots unlocked</span>
+            <span className="font-mono text-sm text-harbor font-medium">{slotData.slotsUnlocked}/{MAX_SLOTS}</span>
+          </div>
+          <div className="flex gap-1 mb-3">
+            {Array.from({ length: MAX_SLOTS }).map((_, i) => (
+              <div key={i} className={cn('h-2 flex-1', i < slotData.slotsUnlocked ? 'bg-harbor' : 'bg-ink/10')} />
+            ))}
+          </div>
+          {slotData.nextUnlock ? (
+            <p className="font-sans text-xs text-ink/50">{slotData.nextUnlock.requirement}</p>
+          ) : (
+            <p className="font-sans text-xs text-sage">All slots unlocked. You earned them.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="mb-6">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Settings</h2>
         <div className="border border-ink-10 bg-white divide-y divide-ink-10">
           <div className="p-4 flex items-center justify-between">
             <div>
-              <p className="font-sans text-sm font-medium text-ink">Focus cap</p>
-              <p className="font-sans text-xs text-ink/40 mt-0.5">Max habits in focus at once</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setFocusCap(Math.max(1, focusCap - 1))} className="w-8 h-8 border border-ink-10 flex items-center justify-center font-mono text-sm text-ink hover:border-harbor">−</button>
-              <span className="font-mono text-sm w-4 text-center text-ink">{focusCap}</span>
-              <button onClick={() => setFocusCap(Math.min(5, focusCap + 1))} className="w-8 h-8 border border-ink-10 flex items-center justify-center font-mono text-sm text-ink hover:border-harbor">+</button>
-            </div>
-          </div>
-          <div className="p-4 flex items-center justify-between">
-            <div>
               <p className="font-sans text-sm font-medium text-ink">AI planning</p>
-              <p className="font-sans text-xs text-ink/40 mt-0.5">{aiEnabled ? 'On — AI proposes weekly plan' : 'Off — rule-based planner active'}</p>
+              <p className="font-sans text-xs text-ink/40 mt-0.5">
+                {aiEnabled ? 'On — AI proposes weekly plan' : 'Off — rule-based planner active'}
+              </p>
             </div>
             <button
               onClick={handleAiToggle}

@@ -4,6 +4,7 @@ import { db } from '../db'
 import { checkins } from '../db/schema'
 import { authenticate } from '../middleware/authenticate'
 import { eq, and, gte, lte } from 'drizzle-orm'
+import { evaluateSlots } from '../lib/evaluateSlots'
 
 const router = Router()
 router.use(authenticate)
@@ -54,6 +55,9 @@ router.put('/:id', async (req, res) => {
       .values({ id, userId: req.userId, ...data })
       .returning()
   }
+
+  // Evaluate slots async — don't block response
+  evaluateSlots(req.userId).catch(() => {})
 
   res.json(row)
 })
