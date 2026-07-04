@@ -6,6 +6,7 @@ interface WeekStripProps {
   checkins: Checkin[]
   dayLogs: DayLog[]
   focusCount: number
+  weekStartsOn?: 0 | 1
 }
 
 function getDayState(
@@ -36,8 +37,8 @@ function getDayState(
   return 'missed'
 }
 
-export function WeekStrip({ checkins, dayLogs, focusCount }: WeekStripProps) {
-  const days = weekDays()
+export function WeekStrip({ checkins, dayLogs, focusCount, weekStartsOn = 1 }: WeekStripProps) {
+  const days = weekDays(new Date(), weekStartsOn)
   const today = new Date()
 
   return (

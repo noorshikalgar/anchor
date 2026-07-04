@@ -2,9 +2,9 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameDay, 
 
 export const TODAY = () => format(new Date(), 'yyyy-MM-dd')
 
-export function weekDays(date = new Date()) {
-  const start = startOfWeek(date, { weekStartsOn: 1 })
-  const end = endOfWeek(date, { weekStartsOn: 1 })
+export function weekDays(date = new Date(), weekStartsOn: 0 | 1 = 1) {
+  const start = startOfWeek(date, { weekStartsOn })
+  const end = endOfWeek(date, { weekStartsOn })
   return eachDayOfInterval({ start, end })
 }
 
@@ -20,8 +20,8 @@ export function isSameDayDate(a: string, b: Date) {
   return isSameDay(parseISO(a), b)
 }
 
-export function weekStart(date = new Date()) {
-  return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+export function weekStart(date = new Date(), weekStartsOn: 0 | 1 = 1) {
+  return format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd')
 }
 
 export function getGreeting(name: string): string {

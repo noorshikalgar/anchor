@@ -28,8 +28,8 @@ interface PlanResult {
   warning?: string
 }
 
-function HabitWeekRow({ habit, weekCheckins }: { habit: Habit; weekCheckins: Checkin[] }) {
-  const days = weekDays()
+function HabitWeekRow({ habit, weekCheckins, weekStartsOn = 1 }: { habit: Habit; weekCheckins: Checkin[]; weekStartsOn?: 0 | 1 }) {
+  const days = weekDays(new Date(), weekStartsOn)
   const Icon = ICONS[habit.icon] ?? TrendingUp
   const done = weekCheckins.filter((c) => c.status === 'done').length
   const partial = weekCheckins.filter((c) => c.status === 'partial').length
@@ -173,15 +173,15 @@ function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: M
 }
 
 export function WeekScreen() {
-  const currentWeekStart = weekStart()
-  const { aiEnabled } = useAppStore()
+  const { aiEnabled, weekStartsOn } = useAppStore()
+  const currentWeekStart = weekStart(new Date(), weekStartsOn)
   const [focusHabits, setFocusHabits] = useState<Habit[]>([])
   const [weekCheckins, setWeekCheckins] = useState<Checkin[]>([])
   const [plan, setPlan] = useState<PlanResult | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
 
   const loadData = useCallback(async () => {
-    const days = weekDays()
+    const days = weekDays(new Date(), weekStartsOn)
     const from = format(days[0], 'yyyy-MM-dd')
     const to = format(days[6], 'yyyy-MM-dd')
     const [habits, checkins] = await Promise.all([
@@ -190,7 +190,7 @@ export function WeekScreen() {
     ])
     setFocusHabits(habits.filter((h) => h.inFocus === 1).sort((a, b) => a.focusOrder - b.focusOrder))
     setWeekCheckins(checkins)
-  }, [])
+  }, [weekStartsOn])
 
   const loadPlan = useCallback(async (context?: string) => {
     setPlanLoading(true)
@@ -207,7 +207,7 @@ export function WeekScreen() {
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => { loadPlan() }, [loadPlan])
 
-  const days = weekDays()
+  const days = weekDays(new Date(), weekStartsOn)
   const totalPossible = focusHabits.length * days.filter((d) => d <= new Date()).length
   const totalDone = weekCheckins.filter((c) => c.status === 'done').length
   const totalPartial = weekCheckins.filter((c) => c.status === 'partial').length
@@ -244,7 +244,7 @@ export function WeekScreen() {
           </div>
           <div className="flex flex-col gap-2">
             {focusHabits.map((habit) => (
-              <HabitWeekRow key={habit.id} habit={habit} weekCheckins={weekCheckins.filter((c) => c.habitId === habit.id)} />
+              <HabitWeekRow key={habit.id} habit={habit} weekCheckins={weekCheckins.filter((c) => c.habitId === habit.id)} weekStartsOn={weekStartsOn} />
             ))}
           </div>
         </>

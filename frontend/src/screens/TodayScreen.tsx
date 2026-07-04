@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, ChevronDown } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
+import { useAppStore } from '@/lib/store'
 import { TODAY, getGreeting, weekDays } from '@/lib/dates'
 import { WeekStrip } from '@/components/WeekStrip'
 import { CheckinRow } from '@/components/CheckinRow'
@@ -12,6 +13,7 @@ import type { Habit } from '@/types/habit'
 
 export function TodayScreen() {
   const { user } = useAuthStore()
+  const { weekStartsOn } = useAppStore()
   const today = TODAY()
 
   const [focusHabits, setFocusHabits] = useState<Habit[]>([])
@@ -24,7 +26,7 @@ export function TodayScreen() {
   const [noteOpen, setNoteOpen] = useState(false)
 
   const loadData = useCallback(async () => {
-    const days = weekDays()
+    const days = weekDays(new Date(), weekStartsOn)
     const from = format(days[0], 'yyyy-MM-dd')
     const [habits, checkins, dayLogs] = await Promise.all([
       api.get<Habit[]>('/api/habits'),
@@ -42,7 +44,7 @@ export function TodayScreen() {
       setDailyNote(saved)
       if (saved) setNoteOpen(true) // expand but don't steal focus
     }
-  }, [today])
+  }, [today, weekStartsOn])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -65,6 +67,9 @@ export function TodayScreen() {
   }
 
   const dateLabel = format(new Date(), 'EEEE, d MMMM')
+  const hour = new Date().getHours()
+  const allLogged = focusHabits.length > 0 && todayCheckins.filter((c) => c.status !== 'pending').length >= focusHabits.length
+  const showEveningBanner = hour >= 20 && !allLogged && focusHabits.length > 0
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -75,7 +80,7 @@ export function TodayScreen() {
         </h1>
       </div>
       <div className="mb-5">
-        <WeekStrip checkins={allCheckins} dayLogs={allDayLogs} focusCount={focusHabits.length} />
+        <WeekStrip checkins={allCheckins} dayLogs={allDayLogs} focusCount={focusHabits.length} weekStartsOn={weekStartsOn} />
       </div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest">Today's focus</h2>
@@ -90,6 +95,11 @@ export function TodayScreen() {
           {disrupted ? 'Disrupted day' : 'Mark disrupted'}
         </button>
       </div>
+      {showEveningBanner && (
+        <div className="mb-4 px-3 py-2 bg-harbor/10 border border-harbor/30">
+          <p className="font-sans text-xs text-harbor">Evening check-in — {focusHabits.length - todayCheckins.filter((c) => c.status !== 'pending').length} habit{focusHabits.length - todayCheckins.filter((c) => c.status !== 'pending').length !== 1 ? 's' : ''} still pending today.</p>
+        </div>
+      )}
       {disrupted && (
         <div className="mb-4 px-3 py-2 bg-ochre/10 border border-ochre/30">
           <p className="font-sans text-xs text-ochre">Disrupted day — fallback versions active. Any progress counts.</p>
