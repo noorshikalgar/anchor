@@ -37,6 +37,15 @@
     border-radius: 0 !important;
   }
 
+  /* Hide scrollbars app-wide — scroll still works */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
   input[type="text"], input[type="email"], textarea {
     -webkit-appearance: none;
     appearance: none;
