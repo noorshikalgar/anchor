@@ -75,6 +75,45 @@ router.post('/logout', authenticate, (_req, res) => {
   res.json({ ok: true })
 })
 
+router.post('/change-password', authenticate, async (req, res) => {
+  const parsed = z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8),
+  }).safeParse(req.body)
+  if (!parsed.success) { res.status(400).json({ error: 'New password must be at least 8 characters' }); return }
+
+  const [user] = await db.select().from(users).where(eq(users.id, req.userId))
+  if (!user) { res.status(404).json({ error: 'User not found' }); return }
+
+  const valid = await verifyPassword(parsed.data.currentPassword, user.passwordHash)
+  if (!valid) { res.status(401).json({ error: 'Current password is incorrect' }); return }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword)
+  await db.update(users).set({ passwordHash }).where(eq(users.id, req.userId))
+  res.json({ ok: true })
+})
+
+router.post('/reset-password', async (req, res) => {
+  const parsed = z.object({
+    email: z.string().email(),
+    newPassword: z.string().min(8),
+    adminKey: z.string().min(1),
+  }).safeParse(req.body)
+  if (!parsed.success) { res.status(400).json({ error: 'Invalid request' }); return }
+
+  const expectedKey = process.env.ADMIN_RESET_KEY
+  if (!expectedKey || parsed.data.adminKey !== expectedKey) {
+    res.status(401).json({ error: 'Invalid admin key' }); return
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email.toLowerCase()))
+  if (!user) { res.status(404).json({ error: 'No account with that email' }); return }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword)
+  await db.update(users).set({ passwordHash }).where(eq(users.id, user.id))
+  res.json({ ok: true })
+})
+
 router.get('/me', authenticate, async (req, res) => {
   const [user] = await db.select({
     id: users.id,
