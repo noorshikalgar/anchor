@@ -4,6 +4,7 @@ import { db } from '../db'
 import { userSettings, users } from '../db/schema'
 import { authenticate } from '../middleware/authenticate'
 import { eq } from 'drizzle-orm'
+import { encrypt, maskKey } from '../lib/crypto'
 
 const router = Router()
 router.use(authenticate)
@@ -33,6 +34,39 @@ router.patch('/', async (req, res) => {
     .returning()
 
   res.json(updated)
+})
+
+router.put('/apikey', async (req, res) => {
+  const { apiKey } = req.body as { apiKey?: string }
+
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 10) {
+    res.status(400).json({ error: 'Invalid API key' })
+    return
+  }
+
+  const encrypted = encrypt(apiKey.trim())
+  await db.update(userSettings)
+    .set({ apiKeyEncrypted: encrypted, apiProvider: 'gemini' })
+    .where(eq(userSettings.userId, req.userId))
+
+  res.json({ configured: true, masked: maskKey(apiKey.trim()), provider: 'gemini' })
+})
+
+router.delete('/apikey', async (req, res) => {
+  await db.update(userSettings)
+    .set({ apiKeyEncrypted: null, apiProvider: null })
+    .where(eq(userSettings.userId, req.userId))
+  res.json({ configured: false })
+})
+
+router.get('/apikey/status', async (req, res) => {
+  const [s] = await db.select({ apiKeyEncrypted: userSettings.apiKeyEncrypted, apiProvider: userSettings.apiProvider })
+    .from(userSettings).where(eq(userSettings.userId, req.userId))
+
+  res.json({
+    configured: !!s?.apiKeyEncrypted,
+    provider: s?.apiProvider ?? null,
+  })
 })
 
 router.patch('/name', async (req, res) => {
