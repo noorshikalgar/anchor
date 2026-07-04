@@ -13,6 +13,12 @@ interface SlotData {
 interface ApiKeyStatus {
   configured: boolean
   provider: string | null
+  model: string | null
+}
+
+interface ModelOption {
+  id: string
+  displayName: string
 }
 
 export function YouScreen() {
@@ -21,18 +27,40 @@ export function YouScreen() {
   const [nameInput, setNameInput] = useState(user?.name ?? '')
   const [saved, setSaved] = useState(false)
   const [slotData, setSlotData] = useState<SlotData>({ slotsUnlocked: 1, nextUnlock: null })
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>({ configured: false, provider: null })
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>({ configured: false, provider: null, model: null })
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [keyLoading, setKeyLoading] = useState(false)
   const [keyError, setKeyError] = useState('')
+  const [models, setModels] = useState<ModelOption[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
   const MAX_SLOTS = 3
 
   useEffect(() => {
     setNameInput(user?.name ?? '')
     api.get<SlotData>('/api/slots').then(setSlotData).catch(() => {})
-    api.get<ApiKeyStatus>('/api/settings/apikey/status').then(setApiKeyStatus).catch(() => {})
+    api.get<ApiKeyStatus>('/api/settings/apikey/status').then((status) => {
+      setApiKeyStatus(status)
+      if (status.configured) loadModels()
+    }).catch(() => {})
   }, [user])
+
+  async function loadModels() {
+    setModelsLoading(true)
+    try {
+      const { models } = await api.get<{ models: ModelOption[] }>('/api/settings/models')
+      setModels(models)
+    } catch {
+      setModels([])
+    } finally {
+      setModelsLoading(false)
+    }
+  }
+
+  async function handleModelChange(modelId: string) {
+    setApiKeyStatus((s) => ({ ...s, model: modelId }))
+    await api.patch('/api/settings', { apiModel: modelId })
+  }
 
   async function saveName() {
     const updated = await api.patch<{ id: string; email: string; name: string }>('/api/settings/name', { name: nameInput.trim() || user?.name })
@@ -53,7 +81,8 @@ export function YouScreen() {
     setKeyError('')
     try {
       const res = await api.put<ApiKeyStatus & { masked: string }>('/api/settings/apikey', { apiKey: apiKeyInput.trim() })
-      setApiKeyStatus({ configured: res.configured, provider: res.provider })
+      setApiKeyStatus({ configured: res.configured, provider: res.provider, model: res.model })
+      loadModels()
       setApiKeyInput('')
     } catch (err: unknown) {
       setKeyError(err instanceof Error ? err.message : 'Failed to save key')
@@ -148,14 +177,36 @@ export function YouScreen() {
               </p>
 
               {apiKeyStatus.configured ? (
-                <div className="flex items-center gap-2">
-                  <p className="font-mono text-xs text-ink/40 flex-1">Key saved — never shown again</p>
-                  <button
-                    onClick={removeApiKey}
-                    className="flex items-center gap-1 px-2 py-1 border border-brick/40 text-brick text-xs font-sans hover:bg-brick hover:text-white transition-colors"
-                  >
-                    <Trash2 size={11} /> Remove
-                  </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-xs text-ink/40 flex-1">Key saved — never shown again</p>
+                    <button
+                      onClick={removeApiKey}
+                      className="flex items-center gap-1 px-2 py-1 border border-brick/40 text-brick text-xs font-sans hover:bg-brick hover:text-white transition-colors"
+                    >
+                      <Trash2 size={11} /> Remove
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="font-sans text-xs text-ink/50 mb-1">Model</p>
+                    {modelsLoading ? (
+                      <p className="font-sans text-xs text-ink/30 animate-pulse">Loading models...</p>
+                    ) : models.length > 0 ? (
+                      <select
+                        value={apiKeyStatus.model ?? ''}
+                        onChange={(e) => handleModelChange(e.target.value)}
+                        className="w-full border border-ink-10 bg-white px-3 py-2 text-sm font-sans text-ink outline-none focus:border-harbor"
+                      >
+                        <option value="">Default (gemini-2.5-flash)</option>
+                        {models.map((m) => (
+                          <option key={m.id} value={m.id}>{m.displayName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="font-sans text-xs text-ink/30">Could not load models</p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">

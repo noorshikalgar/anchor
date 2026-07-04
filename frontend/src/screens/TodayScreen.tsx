@@ -138,13 +138,11 @@ export function TodayScreen() {
               </span>
             )}
           </h2>
-          <div className="flex items-center gap-2">
-            {noteSaved && <span className="font-sans text-xs text-sage">Saved</span>}
-            <ChevronDown size={14} className={cn('text-ink/30 transition-transform', noteOpen && 'rotate-180')} />
-          </div>
+          <ChevronDown size={14} className={cn('text-ink/30 transition-transform', noteOpen && 'rotate-180')} />
         </button>
         {noteOpen && (
           <>
+            {noteSaved && <p className="font-sans text-xs text-sage mb-1">Saved</p>}
             <textarea
               value={dailyNote}
               onChange={(e) => setDailyNote(e.target.value)}

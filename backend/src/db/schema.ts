@@ -50,6 +50,7 @@ export const userSettings = pgTable('user_settings', {
   aiEnabled: boolean('ai_enabled').default(false).notNull(),
   apiProvider: varchar('api_provider', { length: 20 }),
   apiKeyEncrypted: text('api_key_encrypted'),
+  apiModel: varchar('api_model', { length: 100 }),
   weekStartsOn: smallint('week_starts_on').default(1).notNull(),
 })
 

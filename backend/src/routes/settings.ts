@@ -4,7 +4,7 @@ import { db } from '../db'
 import { userSettings, users } from '../db/schema'
 import { authenticate } from '../middleware/authenticate'
 import { eq } from 'drizzle-orm'
-import { encrypt, maskKey } from '../lib/crypto'
+import { encrypt, decrypt, maskKey } from '../lib/crypto'
 
 const router = Router()
 router.use(authenticate)
@@ -12,6 +12,7 @@ router.use(authenticate)
 const SettingsSchema = z.object({
   aiEnabled: z.boolean().optional(),
   weekStartsOn: z.union([z.literal(0), z.literal(1)]).optional(),
+  apiModel: z.string().max(100).optional(),
 })
 
 const NameSchema = z.object({
@@ -60,13 +61,43 @@ router.delete('/apikey', async (req, res) => {
 })
 
 router.get('/apikey/status', async (req, res) => {
-  const [s] = await db.select({ apiKeyEncrypted: userSettings.apiKeyEncrypted, apiProvider: userSettings.apiProvider })
-    .from(userSettings).where(eq(userSettings.userId, req.userId))
+  const [s] = await db.select({
+    apiKeyEncrypted: userSettings.apiKeyEncrypted,
+    apiProvider: userSettings.apiProvider,
+    apiModel: userSettings.apiModel,
+  }).from(userSettings).where(eq(userSettings.userId, req.userId))
 
   res.json({
     configured: !!s?.apiKeyEncrypted,
     provider: s?.apiProvider ?? null,
+    model: s?.apiModel ?? null,
   })
+})
+
+router.get('/models', async (req, res) => {
+  const [s] = await db.select({ apiKeyEncrypted: userSettings.apiKeyEncrypted })
+    .from(userSettings).where(eq(userSettings.userId, req.userId))
+
+  if (!s?.apiKeyEncrypted) { res.status(400).json({ error: 'No API key configured' }); return }
+
+  try {
+    const apiKey = decrypt(s.apiKeyEncrypted)
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
+    if (!r.ok) { res.status(r.status).json({ error: 'Gemini API error' }); return }
+
+    const data = await r.json() as { models: { name: string; displayName: string; supportedGenerationMethods: string[] }[] }
+    const models = (data.models ?? [])
+      .filter((m) => m.supportedGenerationMethods.includes('generateContent'))
+      .map((m) => ({
+        id: m.name.replace('models/', ''),
+        displayName: m.displayName,
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName))
+
+    res.json({ models })
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch models' })
+  }
 })
 
 router.patch('/name', async (req, res) => {
