@@ -1,0 +1,46 @@
+# Portainer stack using images pre-built on the server.
+# Build first:
+#   docker build -t anchor-backend:latest ./backend
+#   docker build -t anchor-frontend:latest ./frontend
+# Then paste this file into Portainer -> Stacks -> Add stack -> Web editor.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: anchor
+      POSTGRES_USER: anchor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "anchor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: anchor-backend:latest
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://anchor:${POSTGRES_PASSWORD}@postgres:5432/anchor
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      ADMIN_RESET_KEY: ${ADMIN_RESET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: anchor-frontend:latest
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
