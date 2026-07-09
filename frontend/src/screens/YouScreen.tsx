@@ -135,7 +135,7 @@ export function YouScreen() {
 
   async function removeApiKey() {
     await api.del('/api/settings/apikey')
-    setApiKeyStatus({ configured: false, provider: null })
+    setApiKeyStatus({ configured: false, provider: null, model: null })
   }
 
   async function logout() {
