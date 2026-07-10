@@ -8,6 +8,8 @@ interface WeekStripProps {
   dayLogs: DayLog[]
   focusCount: number
   weekStartsOn?: 0 | 1
+  selectedDate?: string | null
+  onSelectDay?: (dateStr: string) => void
 }
 
 function getDayState(
@@ -39,23 +41,30 @@ function getDayState(
   return 'missed'
 }
 
-export function WeekStrip({ checkins, dayLogs, focusCount, weekStartsOn = 1 }: WeekStripProps) {
+export function WeekStrip({ checkins, dayLogs, focusCount, weekStartsOn = 1, selectedDate, onSelectDay }: WeekStripProps) {
   const days = weekDays(new Date(), weekStartsOn)
   const today = new Date()
 
   return (
     <div className="flex gap-1 w-full">
       {days.map((day) => {
-        const isToday = isSameDayDate(format(day, 'yyyy-MM-dd'), today)
+        const dateStr = format(day, 'yyyy-MM-dd')
+        const isToday = isSameDayDate(dateStr, today)
+        const isFuture = day > today && !isToday
         const state = getDayState(day, checkins, dayLogs, focusCount)
+        const clickable = !!onSelectDay && !isFuture
 
         return (
-          <div
+          <button
             key={day.toISOString()}
+            onClick={clickable ? () => onSelectDay(dateStr) : undefined}
+            disabled={!clickable}
             className={cn(
               'flex-1 flex flex-col items-center gap-0.5 py-2',
               'border border-ink-10',
               isToday && 'border-harbor',
+              selectedDate === dateStr && 'border-harbor bg-harbor/5',
+              clickable && 'cursor-pointer hover:border-harbor/50',
             )}
           >
             <span className="font-mono text-[10px] text-ink/50 uppercase tracking-wider">
@@ -74,7 +83,7 @@ export function WeekStrip({ checkins, dayLogs, focusCount, weekStartsOn = 1 }: W
             >
               {dayNumber(day)}
             </span>
-          </div>
+          </button>
         )
       })}
     </div>

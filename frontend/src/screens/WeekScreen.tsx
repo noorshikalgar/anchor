@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { weekDays, weekStart } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { format, parseISO } from 'date-fns'
-import { Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, TrendingUp, RefreshCw, type LucideIcon } from 'lucide-react'
+import { format, parseISO, addWeeks } from 'date-fns'
+import { Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import type { Habit } from '@/types/habit'
 import type { Checkin } from '@/types/checkin'
@@ -28,12 +28,13 @@ interface PlanResult {
   warning?: string
 }
 
-function HabitWeekRow({ habit, weekCheckins, weekStartsOn = 1 }: { habit: Habit; weekCheckins: Checkin[]; weekStartsOn?: 0 | 1 }) {
-  const days = weekDays(new Date(), weekStartsOn)
+function HabitWeekRow({ habit, weekCheckins, anchor, weekStartsOn = 1 }: { habit: Habit; weekCheckins: Checkin[]; anchor: Date; weekStartsOn?: 0 | 1 }) {
+  const days = weekDays(anchor, weekStartsOn)
   const Icon = ICONS[habit.icon] ?? TrendingUp
   const done = weekCheckins.filter((c) => c.status === 'done').length
   const partial = weekCheckins.filter((c) => c.status === 'partial').length
-  const rate = days.length > 0 ? Math.round(((done + partial * 0.5) / days.length) * 100) : 0
+  const elapsed = days.filter((d) => d <= new Date()).length
+  const rate = elapsed > 0 ? Math.round(((done + partial * 0.5) / elapsed) * 100) : 0
   return (
     <div className="border border-ink-10 bg-white p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -174,14 +175,17 @@ function PlanCard({ plan, habitMap, onRefresh }: { plan: PlanResult; habitMap: M
 
 export function WeekScreen() {
   const { aiEnabled, weekStartsOn } = useAppStore()
-  const currentWeekStart = weekStart(new Date(), weekStartsOn)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const anchor = addWeeks(new Date(), weekOffset)
+  const currentWeekStart = weekStart(anchor, weekStartsOn)
+  const isCurrentWeek = weekOffset === 0
   const [focusHabits, setFocusHabits] = useState<Habit[]>([])
   const [weekCheckins, setWeekCheckins] = useState<Checkin[]>([])
   const [plan, setPlan] = useState<PlanResult | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
 
   const loadData = useCallback(async () => {
-    const days = weekDays(new Date(), weekStartsOn)
+    const days = weekDays(addWeeks(new Date(), weekOffset), weekStartsOn)
     const from = format(days[0], 'yyyy-MM-dd')
     const to = format(days[6], 'yyyy-MM-dd')
     const [habits, checkins] = await Promise.all([
@@ -190,7 +194,7 @@ export function WeekScreen() {
     ])
     setFocusHabits(habits.filter((h) => h.inFocus === 1).sort((a, b) => a.focusOrder - b.focusOrder))
     setWeekCheckins(checkins)
-  }, [weekStartsOn])
+  }, [weekStartsOn, weekOffset])
 
   const loadPlan = useCallback(async (context?: string) => {
     setPlanLoading(true)
@@ -207,7 +211,7 @@ export function WeekScreen() {
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => { loadPlan() }, [loadPlan])
 
-  const days = weekDays(new Date(), weekStartsOn)
+  const days = weekDays(anchor, weekStartsOn)
   const totalPossible = focusHabits.length * days.filter((d) => d <= new Date()).length
   const totalDone = weekCheckins.filter((c) => c.status === 'done').length
   const totalPartial = weekCheckins.filter((c) => c.status === 'partial').length
@@ -217,12 +221,33 @@ export function WeekScreen() {
 
   return (
     <div className="px-4 pt-6 pb-4">
-      <h1 className="font-display text-2xl font-semibold text-ink mb-1">This week</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="font-display text-2xl font-semibold text-ink">
+          {isCurrentWeek ? 'This week' : weekOffset === -1 ? 'Last week' : `${-weekOffset} weeks ago`}
+        </h1>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setWeekOffset((o) => o - 1)}
+            className="p-1.5 border border-ink-10 text-ink/50 hover:border-harbor hover:text-harbor"
+            aria-label="Previous week"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => setWeekOffset((o) => Math.min(0, o + 1))}
+            disabled={isCurrentWeek}
+            className="p-1.5 border border-ink-10 text-ink/50 hover:border-harbor hover:text-harbor disabled:opacity-30 disabled:hover:border-ink-10 disabled:hover:text-ink/50"
+            aria-label="Next week"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
       <p className="font-sans text-xs text-ink/40 mb-5">
         {format(parseISO(currentWeekStart), 'd MMM')} — {format(days[6], 'd MMM yyyy')}
       </p>
 
-      {planLoading ? (
+      {!isCurrentWeek ? null : planLoading ? (
         <div className="border border-harbor bg-harbor/5 p-4 mb-5">
           <p className="font-sans text-xs text-harbor/60 animate-pulse">
             {aiEnabled ? 'Gemini is thinking...' : 'Building your plan...'}
@@ -244,7 +269,7 @@ export function WeekScreen() {
           </div>
           <div className="flex flex-col gap-2">
             {focusHabits.map((habit) => (
-              <HabitWeekRow key={habit.id} habit={habit} weekCheckins={weekCheckins.filter((c) => c.habitId === habit.id)} weekStartsOn={weekStartsOn} />
+              <HabitWeekRow key={habit.id} habit={habit} weekCheckins={weekCheckins.filter((c) => c.habitId === habit.id)} anchor={anchor} weekStartsOn={weekStartsOn} />
             ))}
           </div>
         </>

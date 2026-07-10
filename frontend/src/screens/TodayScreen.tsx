@@ -5,6 +5,7 @@ import { useAuthStore } from '@/lib/authStore'
 import { useAppStore } from '@/lib/store'
 import { TODAY, getGreeting, weekDays } from '@/lib/dates'
 import { WeekStrip } from '@/components/WeekStrip'
+import { DayDetail } from '@/components/DayDetail'
 import { CheckinRow } from '@/components/CheckinRow'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -24,6 +25,7 @@ export function TodayScreen() {
   const [dailyNote, setDailyNote] = useState('')
   const [noteSaved, setNoteSaved] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     const days = weekDays(new Date(), weekStartsOn)
@@ -80,7 +82,23 @@ export function TodayScreen() {
         </h1>
       </div>
       <div className="mb-5">
-        <WeekStrip checkins={allCheckins} dayLogs={allDayLogs} focusCount={focusHabits.length} weekStartsOn={weekStartsOn} />
+        <WeekStrip
+          checkins={allCheckins}
+          dayLogs={allDayLogs}
+          focusCount={focusHabits.length}
+          weekStartsOn={weekStartsOn}
+          selectedDate={selectedDay}
+          onSelectDay={(d) => setSelectedDay((cur) => (cur === d || d === today ? null : d))}
+        />
+        {selectedDay && (
+          <DayDetail
+            date={selectedDay}
+            habits={focusHabits}
+            checkins={allCheckins}
+            dayLog={allDayLogs.find((l) => l.date === selectedDay)}
+            onClose={() => setSelectedDay(null)}
+          />
+        )}
       </div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest">Today's focus</h2>
