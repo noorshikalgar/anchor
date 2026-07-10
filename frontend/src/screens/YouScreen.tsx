@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { getPushState, subscribePush, unsubscribePush, sendTestPush } from '@/lib/push'
 import { useAuthStore } from '@/lib/authStore'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,8 @@ export function YouScreen() {
   const [pwError, setPwError] = useState('')
   const [pwSaved, setPwSaved] = useState(false)
   const [pwLoading, setPwLoading] = useState(false)
+  const [pushState, setPushState] = useState<'unsupported' | 'denied' | 'subscribed' | 'off' | 'loading'>('loading')
+  const [pushError, setPushError] = useState('')
   const MAX_SLOTS = 3
 
   useEffect(() => {
@@ -51,7 +54,24 @@ export function YouScreen() {
       setApiKeyStatus(status)
       if (status.configured) loadModels()
     }).catch(() => {})
+    getPushState().then(setPushState).catch(() => setPushState('unsupported'))
   }, [user])
+
+  async function togglePush() {
+    setPushError('')
+    try {
+      if (pushState === 'subscribed') {
+        await unsubscribePush()
+        setPushState('off')
+      } else {
+        await subscribePush()
+        setPushState('subscribed')
+      }
+    } catch (err: unknown) {
+      setPushError(err instanceof Error ? err.message : 'Could not update notifications')
+      getPushState().then(setPushState).catch(() => {})
+    }
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -327,6 +347,52 @@ export function YouScreen() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Notifications */}
+      <section className="mb-6">
+        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-3">Notifications</h2>
+        <div className="border border-ink-10 bg-white p-4">
+          {pushState === 'unsupported' ? (
+            <p className="font-sans text-xs text-ink/40">
+              Not supported in this browser. On iPhone, add Anchor to your home screen first, then enable here.
+            </p>
+          ) : pushState === 'denied' ? (
+            <p className="font-sans text-xs text-ink/40">
+              Notifications are blocked. Allow them for Anchor in your device settings, then reopen the app.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-sans text-xs font-medium text-ink/60">Evening reminder</p>
+                  <p className="font-sans text-xs text-ink/40 mt-0.5">A nudge when habits are still unlogged.</p>
+                </div>
+                <button
+                  onClick={togglePush}
+                  disabled={pushState === 'loading'}
+                  className={cn(
+                    'px-3 py-1.5 border text-xs font-sans font-medium transition-colors',
+                    pushState === 'subscribed'
+                      ? 'bg-harbor border-harbor text-parchment'
+                      : 'border-ink-10 text-ink/50 hover:border-harbor hover:text-harbor',
+                  )}
+                >
+                  {pushState === 'subscribed' ? 'On' : 'Off'}
+                </button>
+              </div>
+              {pushState === 'subscribed' && (
+                <button
+                  onClick={() => sendTestPush().catch(() => setPushError('Test failed — check server VAPID config'))}
+                  className="mt-3 px-3 py-1.5 border border-ink-10 text-ink/50 text-xs font-sans hover:border-harbor hover:text-harbor"
+                >
+                  Send test notification
+                </button>
+              )}
+              {pushError && <p className="font-sans text-xs text-brick mt-2">{pushError}</p>}
+            </>
+          )}
         </div>
       </section>
 

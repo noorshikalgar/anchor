@@ -136,6 +136,7 @@ export function TodayScreen() {
                 key={habit.id}
                 habit={habit}
                 status={checkin?.status ?? 'pending'}
+                checkin={checkin}
                 disrupted={disrupted}
                 onLog={(status, reason, note) => handleLog(habit.id, status, reason, note)}
               />

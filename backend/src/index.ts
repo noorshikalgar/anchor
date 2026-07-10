@@ -10,6 +10,8 @@ import dayLogsRouter from './routes/dayLogs'
 import settingsRouter from './routes/settings'
 import slotsRouter from './routes/slots'
 import planRouter from './routes/plan'
+import pushRouter from './routes/push'
+import { startReminderScheduler } from './lib/reminders'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -30,7 +32,11 @@ app.use('/api/daylogs', dayLogsRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/slots', slotsRouter)
 app.use('/api/plan', planRouter)
+app.use('/api/push', pushRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
-app.listen(PORT, () => console.log(`Anchor backend running on :${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Anchor backend running on :${PORT}`)
+  startReminderScheduler()
+})
