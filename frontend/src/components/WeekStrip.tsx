@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { weekDays, dayLabel, dayNumber, isSameDayDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { Checkin, DayLog } from '@/types/checkin'
@@ -15,12 +16,13 @@ function getDayState(
   dayLogs: DayLog[],
   focusCount: number,
 ): 'done' | 'partial' | 'missed' | 'disrupted' | 'today' | 'future' {
-  const isToday = isSameDayDate(date.toISOString().split('T')[0], new Date()) && date <= new Date()
-  const isFuture = date > new Date() && !isSameDayDate(date.toISOString().split('T')[0], new Date())
+  // format() stays in local time — toISOString() shifts to UTC, which is a
+  // previous calendar day for any timezone east of UTC (e.g. IST)
+  const dateStr = format(date, 'yyyy-MM-dd')
+  const isToday = isSameDayDate(dateStr, new Date()) && date <= new Date()
+  const isFuture = date > new Date() && !isSameDayDate(dateStr, new Date())
 
   if (isFuture) return 'future'
-
-  const dateStr = date.toISOString().split('T')[0]
   const log = dayLogs.find((d) => d.date === dateStr)
   const dayCheckins = checkins.filter((c) => c.date === dateStr)
 
@@ -44,7 +46,7 @@ export function WeekStrip({ checkins, dayLogs, focusCount, weekStartsOn = 1 }: W
   return (
     <div className="flex gap-1 w-full">
       {days.map((day) => {
-        const isToday = isSameDayDate(day.toISOString().split('T')[0], today)
+        const isToday = isSameDayDate(format(day, 'yyyy-MM-dd'), today)
         const state = getDayState(day, checkins, dayLogs, focusCount)
 
         return (

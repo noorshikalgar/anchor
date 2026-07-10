@@ -24,7 +24,11 @@ export default function App() {
           .then((s) => setWeekStartsOn(s.weekStartsOn))
           .catch(() => {})
       })
-      .catch(() => setUser(null))
+      .catch((err: unknown) => {
+        // Only a real 401 means logged out — a network failure (offline PWA,
+        // backend restart) keeps the persisted user so the app stays usable
+        if ((err as { status?: number }).status === 401) setUser(null)
+      })
       .finally(() => setLoading(false))
   }, [setUser, setLoading, setWeekStartsOn])
 

@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken'
 import type { Response } from 'express'
 
 const SECRET = process.env.JWT_SECRET!
-const EXPIRES_IN = '30d'
+const EXPIRES_DAYS = Number(process.env.JWT_EXPIRES_DAYS ?? 180)
+const EXPIRES_IN = EXPIRES_DAYS * 24 * 60 * 60 // jwt expiresIn as seconds
 const COOKIE = 'anchor_token'
 
 export function signToken(userId: string): string {
@@ -18,7 +19,7 @@ export function setAuthCookie(res: Response, token: string) {
     httpOnly: true,
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: EXPIRES_DAYS * 24 * 60 * 60 * 1000,
     path: '/',
   })
 }

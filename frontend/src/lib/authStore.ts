@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 interface AuthUser {
   id: string
@@ -13,9 +14,15 @@ interface AuthState {
   setLoading: (loading: boolean) => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  loading: true,
-  setUser: (user) => set({ user }),
-  setLoading: (loading) => set({ loading }),
-}))
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      loading: true,
+      setUser: (user) => set({ user }),
+      setLoading: (loading) => set({ loading }),
+    }),
+    // Persist the last-known user so an offline PWA launch doesn't show login
+    { name: 'anchor-auth', partialize: (s) => ({ user: s.user }) },
+  ),
+)
