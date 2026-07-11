@@ -350,7 +350,22 @@ export function FocusScreen() {
 
       {/* Backlog */}
       <section>
-        <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest mb-2">Backlog</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-sans text-xs font-medium text-ink/50 uppercase tracking-widest">Backlog</h2>
+          {!addOpen && (
+            <button
+              onClick={() => setAddOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 border border-ink-10 text-xs font-sans text-ink/50 hover:border-harbor hover:text-harbor transition-colors"
+            >
+              <Plus size={12} /> Add custom habit
+            </button>
+          )}
+        </div>
+        {addOpen && (
+          <div className="mb-3">
+            <HabitForm initial={EMPTY_FORM} onSave={createHabit} onCancel={() => setAddOpen(false)} saveLabel="Add habit" />
+          </div>
+        )}
         {atCap && (
           <p className="font-sans text-xs text-ink/50 mb-3 px-3 py-2 bg-ink/5 border border-ink-10">
             {slotsUnlocked < MAX_SLOTS ? `Keep current habits for 7 days to unlock slot ${slotsUnlocked + 1}.` : 'Remove a habit from focus to swap.'}
@@ -377,19 +392,6 @@ export function FocusScreen() {
           ))}
         </div>
 
-        {/* Add habit */}
-        <div className="mt-3">
-          {addOpen ? (
-            <HabitForm initial={EMPTY_FORM} onSave={createHabit} onCancel={() => setAddOpen(false)} saveLabel="Add habit" />
-          ) : (
-            <button
-              onClick={() => setAddOpen(true)}
-              className="w-full border border-dashed border-ink-10 py-3 flex items-center justify-center gap-2 text-xs font-sans text-ink/40 hover:text-harbor hover:border-harbor transition-colors"
-            >
-              <Plus size={13} /> Add custom habit
-            </button>
-          )}
-        </div>
       </section>
     </div>
   )
