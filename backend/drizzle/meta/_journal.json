@@ -15,6 +15,13 @@
       "when": 1783181652748,
       "tag": "0001_unknown_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783672489167,
+      "tag": "0002_milky_venom",
+      "breakpoints": true
     }
   ]
 }
