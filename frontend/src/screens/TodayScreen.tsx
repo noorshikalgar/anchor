@@ -97,6 +97,10 @@ export function TodayScreen() {
             checkins={allCheckins}
             dayLog={allDayLogs.find((l) => l.date === selectedDay)}
             onClose={() => setSelectedDay(null)}
+            onLog={async (habitId, date, status) => {
+              await api.put(`/api/checkins/${habitId}-${date}`, { habitId, date, status, usedFallback: false })
+              loadData()
+            }}
           />
         )}
       </div>
