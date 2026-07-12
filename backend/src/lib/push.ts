@@ -37,7 +37,10 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
       const status = (err as { statusCode?: number }).statusCode
       if (status === 404 || status === 410) {
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint))
+        return
       }
+      const host = new URL(sub.endpoint).host
+      console.error(`Push send failed (${status ?? 'no status'}) to ${host}:`, (err as Error).message ?? err)
     }
   }))
 }
