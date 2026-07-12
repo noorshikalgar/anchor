@@ -54,8 +54,18 @@ export const userSettings = pgTable('user_settings', {
   weekStartsOn: smallint('week_starts_on').default(1).notNull(),
 })
 
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').unique().notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export type User = typeof users.$inferSelect
 export type Habit = typeof habits.$inferSelect
 export type Checkin = typeof checkins.$inferSelect
 export type DayLog = typeof dayLogs.$inferSelect
 export type UserSettings = typeof userSettings.$inferSelect
+export type PushSubscription = typeof pushSubscriptions.$inferSelect

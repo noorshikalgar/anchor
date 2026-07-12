@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Moon, Salad, Dumbbell, Code, BookOpen, Sparkles, Smartphone, Check, Minus, X, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Habit } from '@/types/habit'
-import type { CheckinStatus, DisruptionReason } from '@/types/checkin'
+import type { Checkin, CheckinStatus, DisruptionReason } from '@/types/checkin'
 
 const ICONS: Record<string, LucideIcon> = {
   moon: Moon,
@@ -27,14 +27,18 @@ const DISRUPTION_REASONS: { value: DisruptionReason; label: string }[] = [
 interface CheckinRowProps {
   habit: Habit
   status: CheckinStatus
+  checkin?: Checkin
   disrupted: boolean
   onLog: (status: CheckinStatus, reason?: DisruptionReason, note?: string) => void
 }
 
-export function CheckinRow({ habit, status, disrupted, onLog }: CheckinRowProps) {
+export function CheckinRow({ habit, status, checkin, disrupted, onLog }: CheckinRowProps) {
   const [showReason, setShowReason] = useState(false)
-  const [selectedReason, setSelectedReason] = useState<DisruptionReason | null>(null)
-  const [note, setNote] = useState('')
+  // Prefill from the saved checkin so reopening the panel doesn't look blank
+  const [selectedReason, setSelectedReason] = useState<DisruptionReason | null>(
+    (checkin?.reason as DisruptionReason) ?? null,
+  )
+  const [note, setNote] = useState(checkin?.note ?? '')
 
   const Icon = ICONS[habit.icon] ?? Check
   const version = disrupted ? habit.fallbackVersion : habit.defaultVersion
@@ -66,6 +70,15 @@ export function CheckinRow({ habit, status, disrupted, onLog }: CheckinRowProps)
             {disrupted && <span className="text-ochre font-medium">fallback · </span>}
             {version}
           </p>
+          {!showReason && checkin && (checkin.reason || checkin.note) && (
+            <p className="font-sans text-xs text-ink/40 mt-1 leading-snug">
+              <span className={cn('font-medium', status === 'missed' ? 'text-brick' : 'text-ochre')}>
+                {DISRUPTION_REASONS.find((r) => r.value === checkin.reason)?.label ?? ''}
+              </span>
+              {checkin.reason && checkin.note && ' — '}
+              {checkin.note}
+            </p>
+          )}
         </div>
         <div className="flex gap-1 flex-shrink-0">
           <button
