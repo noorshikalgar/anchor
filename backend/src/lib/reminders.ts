@@ -1,10 +1,11 @@
 import cron from 'node-cron'
 import { db } from '../db'
-import { habits, checkins, pushSubscriptions } from '../db/schema'
+import { habits, checkins, pushSubscriptions, userSettings } from '../db/schema'
 import { and, eq, ne } from 'drizzle-orm'
 import { pushEnabled, sendToUser } from './push'
 
 const REMINDER_HOUR = Number(process.env.REMINDER_HOUR ?? 20)
+const PLAN_HOUR = Number(process.env.PLAN_HOUR ?? 8)
 
 function todayStr(): string {
   // Server-local date — set TZ env so "today" matches the household's timezone
@@ -38,6 +39,28 @@ async function sendEveningReminders(): Promise<void> {
   }
 }
 
+async function sendWeekStartNudges(): Promise<void> {
+  // Runs every morning; only notifies users whose chosen week starts today
+  const todayDow = new Date().getDay() // 0 = Sunday, 1 = Monday
+  const subscribedUsers = await db.selectDistinct({ userId: pushSubscriptions.userId }).from(pushSubscriptions)
+
+  for (const { userId } of subscribedUsers) {
+    const [settings] = await db.select({ weekStartsOn: userSettings.weekStartsOn })
+      .from(userSettings).where(eq(userSettings.userId, userId))
+    if ((settings?.weekStartsOn ?? 1) !== todayDow) continue
+
+    const focus = await db.select().from(habits)
+      .where(and(eq(habits.userId, userId), eq(habits.inFocus, 1)))
+    if (focus.length === 0) continue
+
+    await sendToUser(userId, {
+      title: 'New week',
+      body: 'Your weekly plan is ready — see what to focus on this week.',
+      url: '/',
+    })
+  }
+}
+
 export function startReminderScheduler(): void {
   if (!pushEnabled) {
     console.log('Push not configured (VAPID keys missing) — reminders disabled')
@@ -46,5 +69,8 @@ export function startReminderScheduler(): void {
   cron.schedule(`0 ${REMINDER_HOUR} * * *`, () => {
     sendEveningReminders().catch((err) => console.error('Reminder run failed:', err))
   })
-  console.log(`Evening reminder scheduled daily at ${REMINDER_HOUR}:00 (server TZ)`)
+  cron.schedule(`0 ${PLAN_HOUR} * * *`, () => {
+    sendWeekStartNudges().catch((err) => console.error('Week-start nudge failed:', err))
+  })
+  console.log(`Evening reminder scheduled daily at ${REMINDER_HOUR}:00, week-start nudge at ${PLAN_HOUR}:00 (server TZ)`)
 }
