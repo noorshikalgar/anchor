@@ -11,6 +11,7 @@ import settingsRouter from './routes/settings'
 import slotsRouter from './routes/slots'
 import planRouter from './routes/plan'
 import pushRouter from './routes/push'
+import coachRouter from './routes/coach'
 import { startReminderScheduler } from './lib/reminders'
 
 const app = express()
@@ -33,6 +34,7 @@ app.use('/api/settings', settingsRouter)
 app.use('/api/slots', slotsRouter)
 app.use('/api/plan', planRouter)
 app.use('/api/push', pushRouter)
+app.use('/api/coach', coachRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 

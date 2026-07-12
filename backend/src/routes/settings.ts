@@ -20,8 +20,14 @@ const NameSchema = z.object({
 })
 
 router.get('/', async (req, res) => {
-  const [settings] = await db.select().from(userSettings)
-    .where(eq(userSettings.userId, req.userId))
+  // Never send apiKeyEncrypted to the client — ciphertext stays server-side
+  const [settings] = await db.select({
+    slotsUnlocked: userSettings.slotsUnlocked,
+    aiEnabled: userSettings.aiEnabled,
+    apiProvider: userSettings.apiProvider,
+    apiModel: userSettings.apiModel,
+    weekStartsOn: userSettings.weekStartsOn,
+  }).from(userSettings).where(eq(userSettings.userId, req.userId))
   res.json(settings ?? null)
 })
 
