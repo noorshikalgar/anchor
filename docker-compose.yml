@@ -29,6 +29,7 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       TZ: ${TZ:-Asia/Kolkata}
       REMINDER_HOUR: ${REMINDER_HOUR:-20}
+      PLAN_HOUR: ${PLAN_HOUR:-8}
     depends_on:
       postgres:
         condition: service_healthy
