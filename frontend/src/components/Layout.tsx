@@ -1,12 +1,13 @@
-import { CalendarDays, ListChecks, LayoutGrid, User, type LucideIcon } from 'lucide-react'
+import { CalendarDays, ListChecks, LayoutGrid, MessageCircle, User, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type Screen = 'today' | 'focus' | 'week' | 'you'
+export type Screen = 'today' | 'focus' | 'week' | 'coach' | 'you'
 
 const TABS: { id: Screen; label: string; Icon: LucideIcon }[] = [
   { id: 'today', label: 'Today', Icon: CalendarDays },
   { id: 'focus', label: 'Focus', Icon: LayoutGrid },
   { id: 'week', label: 'Week', Icon: ListChecks },
+  { id: 'coach', label: 'Coach', Icon: MessageCircle },
   { id: 'you', label: 'You', Icon: User },
 ]
 
